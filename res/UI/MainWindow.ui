@@ -800,97 +800,152 @@
       <enum>Qt::Horizontal</enum>
      </property>
     </widget>
-    <widget class="QWidget" name="layoutWidget_3">
+    <widget class="QTabWidget" name="tabWidget">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>290</y>
-       <width>531</width>
-       <height>241</height>
+       <x>0</x>
+       <y>50</y>
+       <width>550</width>
+       <height>650</height>
       </rect>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_7">
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>进度：</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QTextBrowser" name="ddd_progress"/>
-      </item>
-     </layout>
-    </widget>
-    <widget class="QWidget" name="layoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>100</y>
-       <width>531</width>
-       <height>194</height>
-      </rect>
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_6">
-      <item>
-       <widget class="QLabel" name="label_21">
-        <property name="text">
-         <string>药品：</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QTableWidget" name="ddd_drug_info">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="font">
-         <font>
-          <family>宋体</family>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="layoutDirection">
-         <enum>Qt::LeftToRight</enum>
-        </property>
-        <property name="rowCount">
-         <number>1</number>
-        </property>
-        <property name="columnCount">
-         <number>5</number>
-        </property>
-        <row/>
-        <column>
-         <property name="text">
-          <string>药品名称</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>规格</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>用量</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>单价</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>金额</string>
-         </property>
-        </column>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QWidget" name="tab">
+      <attribute name="title">
+       <string>选择条目</string>
+      </attribute>
+      <widget class="QTableView" name="tableView">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>39</y>
+         <width>450</width>
+         <height>581</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_11">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>221</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>请选择开始上报的条目：</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="btn_ok">
+       <property name="geometry">
+        <rect>
+         <x>460</x>
+         <y>120</y>
+         <width>71</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>确定</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_2">
+      <attribute name="title">
+       <string>进度</string>
+      </attribute>
+      <widget class="QWidget" name="">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>20</y>
+         <width>541</width>
+         <height>601</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>药品：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTableWidget" name="ddd_drug_info">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <family>宋体</family>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="layoutDirection">
+             <enum>Qt::LeftToRight</enum>
+            </property>
+            <property name="rowCount">
+             <number>1</number>
+            </property>
+            <property name="columnCount">
+             <number>5</number>
+            </property>
+            <row/>
+            <column>
+             <property name="text">
+              <string>药品名称</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>规格</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>用量</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>单价</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>金额</string>
+             </property>
+            </column>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>进度：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTextBrowser" name="ddd_progress"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
     </widget>
    </widget>
   </widget>
