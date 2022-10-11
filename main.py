@@ -70,7 +70,7 @@ class DDDReportAndUpdate(DDDReport, QObject):
     start_record_sig = pyqtSignal(str)
     isPause = False
     ddd_drug_name = ''
-    start_record = 'dddddddd'
+    start_record = None
 
     def __init__(self, ddd_data, ddd_drug_dict):
         DDDReport.__init__(self, ddd_data, ddd_drug_dict, None)
