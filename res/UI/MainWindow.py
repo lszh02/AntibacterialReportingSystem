@@ -428,6 +428,7 @@ class Ui_MainWindow(object):
         self.stackedWidget.setCurrentIndex(2)
         self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        # self.tableView.selectionModel().selection().indexes()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
