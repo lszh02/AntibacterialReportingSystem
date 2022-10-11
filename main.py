@@ -6,10 +6,11 @@ import time
 import pyautogui
 import pyperclip
 import win32api
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSignal, QThread, QObject
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox, QLineEdit, QWidget
+from PyQt5.QtGui import QIcon, QStandardItemModel
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox, QLineEdit, QWidget, QHeaderView, \
+    QAbstractItemView, QTableView
 
 from core.ddd_report.ddd_report import DDDData, DDDReport, get_ddd_drug_dict, update_ddd_drug_dict, input_drug_count, \
     input_drug_money
@@ -66,12 +67,13 @@ class DDDReportAndUpdate(DDDReport, QObject):
     ddd_drug_sig = pyqtSignal(dict)
     ddd_progress_sig = pyqtSignal(str)
     ddd_update_sig = pyqtSignal(str)
-    # finished_sig = pyqtSignal()
+    start_record_sig = pyqtSignal(str)
     isPause = False
     ddd_drug_name = ''
+    start_record = 'dddddddd'
 
-    def __init__(self, ddd_data, ddd_drug_dict, record_completed):
-        DDDReport.__init__(self, ddd_data, ddd_drug_dict, record_completed)
+    def __init__(self, ddd_data, ddd_drug_dict):
+        DDDReport.__init__(self, ddd_data, ddd_drug_dict, None)
         QObject.__init__(self)
 
     def input_drug_name(self, one_drug_info):
@@ -108,10 +110,14 @@ class DDDReportAndUpdate(DDDReport, QObject):
         return f"输入药品名称：{drug_name}"
 
     def do_report(self):
+        self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
+        while not self.start_record:
+            print(self.start_record)
+            break
         # 遍历剩余信息
-        for one_info in self.ddd_data[self.record_completed:]:
+        for one_info in self.ddd_data[self.start_record:]:
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
-            self.ddd_progress_sig.emit('—' * 5 + f"开始填报第{self.record_completed + 1}条记录！" + '—' * 5)  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
             self.ddd_progress_sig.emit(input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(input_drug_money(one_info))  # 发送信号：输入药品金额
@@ -121,7 +127,7 @@ class DDDReportAndUpdate(DDDReport, QObject):
             self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
 
             self.record_completed += 1
-            self.ddd_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————已填报{self.record_completed}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit('')  # 空一行
         self.ddd_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
         # self.finished_sig.emit()
@@ -243,26 +249,11 @@ class MyWindow(QMainWindow, Ui_MainWindow):
 
             # 设置表格列宽
             self.set_ui_table_width()
-            # 跳转页面
+            # 跳转DDD页面
             self.stackedWidget.setCurrentIndex(2)
-            # 后面四个数字的作用依次是 初始值 最小值 最大值 步幅
-            record_completed, ok = QInputDialog.getInt(self, "是否断点续录", "请输入已录入记录条数:", 0, 0, 10000, 1)
+            self.tabWidget.setCurrentIndex(0)
+            self.start_ddd_report(ddd_data)
 
-            ddd_drug_name_dict = get_ddd_drug_dict()
-
-            # 开启新进程进行DDD上报
-            self.thread = QThread()
-            self.ddd_report = DDDReportAndUpdate(ddd_data, ddd_drug_name_dict, record_completed)
-            # 把实例化的线程用moveToThread移到QThread管理
-            self.ddd_report.moveToThread(self.thread)
-
-            self.thread.started.connect(self.ddd_report.do_report)
-            self.ddd_report.ddd_drug_sig.connect(self.ddd_display)  # 连接信号槽，在UI上显示处方信息
-            self.ddd_report.ddd_progress_sig.connect(
-                lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))  # 连接信号槽,在UI上显示进度
-            self.ddd_report.ddd_update_sig.connect(self.update_ddd_drug_name)
-            # self.ddd_report.finished_sig.connect(self.thread.quit())
-            self.thread.start()
         else:
             # 获取Sheet表格
             presc_sheet = self.presc_sheet.currentText()
@@ -295,6 +286,38 @@ class MyWindow(QMainWindow, Ui_MainWindow):
                 lambda progress_sig: self.progress.append(progress_sig))  # 连接信号槽,在UI上显示进度
             self.report_thread.start()
 
+    def start_ddd_report(self, ddd_data):
+        # 创建一个 0行4列 的标准模型
+        self.model = QStandardItemModel(0, 2)
+        # 设置表头标签
+        self.model.setHorizontalHeaderLabels(['药名', '规格'])
+
+        for one_info in ddd_data:
+            drug_name = QtGui.QStandardItem(one_info.get('drug_name'))
+            specifications = QtGui.QStandardItem(one_info.get('specifications').split('*')[0])
+            record = [drug_name, specifications]
+            self.model.appendRow(record)
+
+        self.tableView.setModel(self.model)
+
+        self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # 所有列自动拉伸，充满界面
+        self.tableView.setSelectionMode(QAbstractItemView.SingleSelection)  # 设置只能选中整行
+        self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置只能选中一行
+        self.tableView.setEditTriggers(QTableView.NoEditTriggers)  # 不可编辑
+
+        # 开启新进程进行DDD上报
+        self.thread = QThread()
+        self.ddd_report = DDDReportAndUpdate(ddd_data, get_ddd_drug_dict())
+        self.ddd_report.moveToThread(self.thread)
+
+        # 连接信号槽：btn_ok开启进程工作，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
+        self.btn_ok.clicked.connect(self.thread.start)
+        self.thread.started.connect(self.ddd_report.do_report)
+        self.ddd_report.start_record_sig.connect(self.set_ddd_start_record)
+        self.ddd_report.ddd_drug_sig.connect(self.ddd_display)
+        self.ddd_report.ddd_progress_sig.connect(lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))
+        self.ddd_report.ddd_update_sig.connect(self.update_ddd_drug_name)
+
     def presc_display(self, presc_sig):  # 这里是接收信号
         # 将处方信息显示在UI上面
         self.id.setText(presc_sig.get('prescription_id'))
@@ -317,7 +340,9 @@ class MyWindow(QMainWindow, Ui_MainWindow):
             self.drug_info.setItem(index, 5, QtWidgets.QTableWidgetItem(str(one_drug.get('quantity'))))
             self.drug_info.setItem(index, 6, QtWidgets.QTableWidgetItem(str(one_drug.get('money'))))
 
-    def ddd_display(self, ddd_drug_sig):  # 这里是接收信号
+    def ddd_display(self, ddd_drug_sig):
+        # 跳转上报进度页面
+        self.tabWidget.setCurrentIndex(1)
         # 将处方信息显示在UI上面
         self.ddd_drug_info.clearContents()  # 仅删除表格中数据区内所有单元格的内容
         self.ddd_drug_info.setItem(0, 0, QtWidgets.QTableWidgetItem(ddd_drug_sig.get('drug_name')))
@@ -330,6 +355,9 @@ class MyWindow(QMainWindow, Ui_MainWindow):
         ddd_drug_name, ok = QInputDialog.getText(self, "药品名称字典需更新", f'请输入{drug_name} 在上报系统中的名字:', QLineEdit.Normal, "")
         self.ddd_report.ddd_drug_name = ddd_drug_name
         self.ddd_report.isPause = False
+
+    def set_ddd_start_record(self):
+        self.ddd_report.start_record = self.tableView.currentIndex().row()  # 取得当前选中行的index
 
 
 if __name__ == '__main__':
