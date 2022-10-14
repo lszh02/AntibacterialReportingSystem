@@ -2,6 +2,8 @@
 import os
 import sys
 import time
+import traceback
+import logging
 
 import pyautogui
 import pyperclip
@@ -361,8 +363,20 @@ class MyWindow(QMainWindow, Ui_MainWindow):
 
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    ui = MyWindow()
-    ui.setWindowIcon(QIcon('res/UI/drug.png'))
-    ui.show()
-    sys.exit(app.exec_())
+    logging.basicConfig(filename='log.txt', level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+    try:
+        app = QtWidgets.QApplication(sys.argv)
+        ui = MyWindow()
+        ui.setWindowIcon(QIcon('res/UI/drug.png'))
+        ui.show()
+        sys.exit(app.exec_())
+    except:
+        # 方案一，自己定义一个文件，自己把错误堆栈信息写入文件。
+        # errorFile = open('log.txt', 'a')
+        # errorFile.write(traceback.format_exc())
+        # errorFile.close()
+
+        # 方案二，使用Python标准日志管理维护工具。
+        logging.debug(traceback.format_exc())
+

@@ -364,7 +364,7 @@ class Ui_MainWindow(object):
         self.tab = QtWidgets.QWidget()
         self.tab.setObjectName("tab")
         self.tableView = QtWidgets.QTableView(self.tab)
-        self.tableView.setGeometry(QtCore.QRect(0, 39, 450, 581))
+        self.tableView.setGeometry(QtCore.QRect(0, 40, 450, 580))
         self.tableView.setObjectName("tableView")
         self.label_11 = QtWidgets.QLabel(self.tab)
         self.label_11.setGeometry(QtCore.QRect(10, 20, 221, 16))
@@ -428,7 +428,6 @@ class Ui_MainWindow(object):
         self.stackedWidget.setCurrentIndex(2)
         self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        # self.tableView.selectionModel().selection().indexes()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
