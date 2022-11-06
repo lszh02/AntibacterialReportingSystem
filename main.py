@@ -4,6 +4,7 @@ import sys
 import time
 import traceback
 import logging
+import cgitb
 
 import pyautogui
 import pyperclip
@@ -117,6 +118,8 @@ class DDDReportAndUpdate(DDDReport, QObject):
             print(self.start_record)
             break
         # 遍历剩余信息
+        print('start_record:', self.start_record)
+        print('type:start_record:', type(self.start_record))
         for one_info in self.ddd_data[self.start_record:]:
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
             self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
@@ -363,20 +366,32 @@ class MyWindow(QMainWindow, Ui_MainWindow):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='log.txt', level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-    try:
-        app = QtWidgets.QApplication(sys.argv)
-        ui = MyWindow()
-        ui.setWindowIcon(QIcon('res/UI/drug.png'))
-        ui.show()
-        sys.exit(app.exec_())
-    except:
-        # 方案一，自己定义一个文件，自己把错误堆栈信息写入文件。
-        # errorFile = open('log.txt', 'a')
-        # errorFile.write(traceback.format_exc())
-        # errorFile.close()
+    # logging.basicConfig(filename='log.txt', level=logging.DEBUG,
+    #                     format='%(asctime)s - %(levelname)s - %(message)s')
+    # try:
+    #     app = QtWidgets.QApplication(sys.argv)
+    #     ui = MyWindow()
+    #     ui.setWindowIcon(QIcon('res/UI/drug.png'))
+    #     ui.show()
+    #     sys.exit(app.exec_())
+    # except:
+    #     # 方案一，自己定义一个文件，自己把错误堆栈信息写入文件。
+    #     # errorFile = open('log.txt', 'a')
+    #     # errorFile.write(traceback.format_exc())
+    #     # errorFile.close()
+    #
+    #     # 方案二，使用Python标准日志管理维护工具。
+    #     logging.debug(traceback.format_exc())
 
-        # 方案二，使用Python标准日志管理维护工具。
-        logging.debug(traceback.format_exc())
+    log_dir = os.path.join(os.getcwd(), 'log')
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+    cgitb.enable(format='text', logdir=log_dir)
+
+    app = QtWidgets.QApplication(sys.argv)
+    ui = MyWindow()
+    ui.setWindowIcon(QIcon('res/UI/drug.png'))
+    ui.show()
+    sys.exit(app.exec_())
+
 
