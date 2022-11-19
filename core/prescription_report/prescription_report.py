@@ -62,7 +62,6 @@ class PrescriptionReport:
 
         # 保存数据
         mouse_click(rf"{res_path}/image/prescription_image/save.png")
-        # time.sleep(0.3)
         mouse_click(rf"{res_path}/image/prescription_image/enter.png")
         print("保存数据")
 
@@ -288,8 +287,8 @@ class JzPrescriptionReport(PrescriptionReport):
 
 if __name__ == '__main__':
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年8月'
-    file_name = r'2022年8月门诊处方点评（100张）-1.xls'
+    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年10月'
+    file_name = r'门诊处方点评20221016下午.xls'
     base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
     drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet5')
 
