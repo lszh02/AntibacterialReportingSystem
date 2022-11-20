@@ -112,7 +112,7 @@ class DDDReportAndUpdate(DDDReport, QObject):
     def do_report(self):
         self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
         # 等待UI传参
-        while not self.start_record:
+        while self.start_record is None:
             time.sleep(0.01)
 
         # 遍历剩余信息
