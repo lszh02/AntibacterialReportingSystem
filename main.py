@@ -122,6 +122,7 @@ class DDDReportAndUpdate(DDDReport, QObject):
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
             self.ddd_progress_sig.emit(input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(input_drug_money(one_info))  # 发送信号：输入药品金额
+            time.sleep(0.2)
             mouse_click(rf"{res_path}/image/ddd_image/save.png")
             time.sleep(0.3)
             mouse_click(rf"{res_path}/image/ddd_image/enter.png")
@@ -347,7 +348,7 @@ class MyWindow(QMainWindow, Ui_MainWindow):
         # 将处方信息显示在UI上面
         self.ddd_drug_info.clearContents()  # 仅删除表格中数据区内所有单元格的内容
         self.ddd_drug_info.setItem(0, 0, QtWidgets.QTableWidgetItem(ddd_drug_sig.get('drug_name')))
-        self.ddd_drug_info.setItem(0, 1, QtWidgets.QTableWidgetItem(ddd_drug_sig.get('specifications')))
+        self.ddd_drug_info.setItem(0, 1, QtWidgets.QTableWidgetItem(ddd_drug_sig.get('specifications').split('*')[0]))
         self.ddd_drug_info.setItem(0, 2, QtWidgets.QTableWidgetItem(str(ddd_drug_sig.get('quantity'))))
         self.ddd_drug_info.setItem(0, 3, QtWidgets.QTableWidgetItem(str(ddd_drug_sig.get('price'))))
         self.ddd_drug_info.setItem(0, 4, QtWidgets.QTableWidgetItem(str(ddd_drug_sig.get('money'))))
