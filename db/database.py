@@ -139,8 +139,14 @@ class Prescription:
             return prescription_data
 
     def _get_diagnosis_info(self, row_num):
-        diagnosis_list = [self._prescription_data_sheet.cell(row_num, 4).value]
-        # 多个诊断时，列表追加诊断
+        diagnosis_list = []
+        if ',' in self._prescription_data_sheet.cell(row_num, 4).value:
+            # 急诊处方的诊断信息是以','分割保存在一个excel单元格中
+            diagnosis_list = self._prescription_data_sheet.cell(row_num, 4).value.split(',')
+        else:
+            # 门诊处方的诊断信息分别保存在不同的excel单元格中（多行）
+            diagnosis_list.append(self._prescription_data_sheet.cell(row_num, 4).value)
+        # 门诊处方有多个诊断时（多行），需要下探，列表追加诊断
         row_x = 1
         while row_num + row_x < self._prescription_data_sheet.nrows:
             if self._prescription_data_sheet.cell_type(row_num + row_x, 0) == 0:
