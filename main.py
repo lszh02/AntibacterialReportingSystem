@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox,
 from core.ddd_report.ddd_report import DDDData, DDDReport, get_ddd_drug_dict, update_ddd_drug_dict, input_drug_count, \
     input_drug_money
 from core.prescription_report.prescription_report import mouse_click, PrescriptionReport, JzPrescriptionReport
-from db.database import read_excel, Prescription, get_dep_dict, save_dep_dict
+from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
 
 current_path = os.path.dirname(__file__)
@@ -29,7 +29,7 @@ class PrescriptionUpdateDep(Prescription, QWidget):
 
     def update_dep_dict(self):
         print('重写更新科室字典被调用')
-        dep_dict = get_dep_dict()
+        dep_dict = Prescription.get_dep_dict()
         l1 = len(dep_dict)
         row_num = 1
         while row_num < self._prescription_data_sheet.nrows:
@@ -57,7 +57,7 @@ class PrescriptionUpdateDep(Prescription, QWidget):
 
         l2 = len(dep_dict)
         if l2 > l1:
-            save_dep_dict(dep_dict)
+            Prescription.save_dep_dict(dep_dict)
         else:
             print('读取科室信息无新增，科室字典无需更新！')
         return dep_dict
