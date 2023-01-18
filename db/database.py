@@ -21,36 +21,10 @@ def read_excel(excel_file, sheet_name):
         print('打开文件出错，错误为：', e)
 
 
-def get_dep_dict():
-    try:
-        with open(file=rf'{current_path}\dep_dict.json', mode='r', encoding='utf-8') as f:
-            dep_dict = json.load(f)
-            print(rf'于{current_path}\dep_dict.json成功读取科室字典！')
-            return dep_dict
-    except Exception as e:
-        print('读取科室字典时出错：', e)
-
-
-def save_dep_dict(dep_dict):
-    try:
-        with open(file=rf'{current_path}\dep_dict.json', mode='w', encoding='utf-8') as f:
-            json.dump(dep_dict, f, ensure_ascii=False, indent=2)
-            print(rf'已更新科室字典，并保存于{current_path}\dep_dict.json')
-    except Exception as e:
-        print('已更新科室字典，但以json格式保存科室字典时出错：', e)
-
-
-def get_total_money(drug_info):
-    total_money = 0
-    for drug in drug_info:
-        total_money += drug.get('money')
-    return total_money
-
-
 class Prescription:
     def __init__(self, prescription_data_sheet, drug_data_sheet):
         """
-        处方信息格式化
+        获取Execl中的处方基本信息sheet和用药信息sheet，如果科室有新增，将触发科室字典更新。
         :param prescription_data_sheet: 处方基本信息表
         :param drug_data_sheet: 药品信息表
         """
@@ -58,8 +32,28 @@ class Prescription:
         self._drug_data_sheet = drug_data_sheet
         self.dep_dict = self.update_dep_dict()
 
+    @staticmethod
+    def get_dep_dict():
+        try:
+            with open(file=rf'{current_path}\dep_dict.json', mode='r', encoding='utf-8') as f:
+                dep_dict = json.load(f)
+                print(rf'于{current_path}\dep_dict.json成功读取科室字典！')
+                return dep_dict
+        except Exception as e:
+            print('读取科室字典时出错：', e)
+
+    @staticmethod
+    def save_dep_dict(dep_dict):
+        try:
+            with open(file=rf'{current_path}\dep_dict.json', mode='w', encoding='utf-8') as f:
+                json.dump(dep_dict, f, ensure_ascii=False, indent=2)
+                print(rf'已更新科室字典，并保存于{current_path}\dep_dict.json')
+        except Exception as e:
+            print('已更新科室字典，但以json格式保存科室字典时出错：', e)
+
     def update_dep_dict(self):
-        dep_dict = get_dep_dict()
+        """(手动）更新科室字典。"""
+        dep_dict = Prescription.get_dep_dict()
         l1 = len(dep_dict)
         row_num = 1
         while row_num < self._prescription_data_sheet.nrows:
@@ -85,10 +79,17 @@ class Prescription:
 
         l2 = len(dep_dict)
         if l2 > l1:
-            save_dep_dict(dep_dict)
+            Prescription.save_dep_dict(dep_dict)
         else:
             print('读取科室信息无新增，科室字典无需更新！')
         return dep_dict
+
+    @staticmethod
+    def get_total_money(drug_info):
+        total_money = 0
+        for drug in drug_info:
+            total_money += drug.get('money')
+        return total_money
 
     def get_prescription_data(self, path=None):
         """
@@ -114,7 +115,7 @@ class Prescription:
                                                                   prescription_info_dict['patient_name'],
                                                                   prescription_info_dict['diagnosis'])
             prescription_info_dict['drug_info'] = self._get_drug_data(prescription_info_dict['prescription_id'])
-            prescription_info_dict['total_money'] = get_total_money(prescription_info_dict['drug_info'])
+            prescription_info_dict['total_money'] = Prescription.get_total_money(prescription_info_dict['drug_info'])
             # 将一条处方信息字典添加进prescription_data列表
             prescription_data.append(copy.deepcopy(prescription_info_dict))
 
@@ -139,8 +140,14 @@ class Prescription:
             return prescription_data
 
     def _get_diagnosis_info(self, row_num):
-        diagnosis_list = [self._prescription_data_sheet.cell(row_num, 4).value]
-        # 多个诊断时，列表追加诊断
+        diagnosis_list = []
+        if ',' in self._prescription_data_sheet.cell(row_num, 4).value:
+            # 急诊处方的诊断信息是以','分割保存在一个excel单元格中
+            diagnosis_list = self._prescription_data_sheet.cell(row_num, 4).value.split(',')
+        else:
+            # 门诊处方的诊断信息分别保存在不同的excel单元格中（多行）
+            diagnosis_list.append(self._prescription_data_sheet.cell(row_num, 4).value)
+        # 门诊处方有多个诊断时（多行），需要下探，列表追加诊断
         row_x = 1
         while row_num + row_x < self._prescription_data_sheet.nrows:
             if self._prescription_data_sheet.cell_type(row_num + row_x, 0) == 0:
@@ -223,20 +230,3 @@ class Prescription:
             gender = "woman"
         return gender
 
-
-if __name__ == '__main__':
-    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    # excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年8月'
-    # file_name = r'2022年8月门诊处方点评（100张）-1.xls'
-    # base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
-    # drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet5')
-
-    # 实例化
-    # presc_data = Prescription(base_sheet, drug_sheet).get_prescription_data()
-
-    # for i in presc_data:
-    #     print(i)
-
-    dep_dict = get_dep_dict()
-    for i in dep_dict.values():
-        print(i)

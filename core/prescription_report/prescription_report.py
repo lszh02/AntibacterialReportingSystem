@@ -5,11 +5,6 @@ import time
 import pyperclip
 import win32api
 
-from core.ddd_report.ddd_report import get_ddd_drug_dict
-from db import database
-
-from db.database import read_excel, get_dep_dict
-
 current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
@@ -190,7 +185,7 @@ class PrescriptionReport:
                 if win32api.GetKeyState(0x02) < 0:
                     # up = 0 or 1, down = -127 or -128
                     break
-        
+
         if len(diagnosis) > 2:
             mouse_click(rf"{res_path}/image/prescription_image/diagnosis3.png")
             print("点击：诊断3")
@@ -283,23 +278,3 @@ class JzPrescriptionReport(PrescriptionReport):
                 pyautogui.dragRel(0, -200, duration=0.2)
             mouse_click(rf'{res_path}/image/jizhen_image/dep_image/{dep_pic_name}.png')
         return f'选择科室：{dep_chinese_name}'
-
-
-if __name__ == '__main__':
-    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年10月'
-    file_name = r'门诊处方点评20221016下午.xls'
-    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
-    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet5')
-
-    # 实例化处方数据
-    presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
-    # 获取科室字典
-    dep_dict = get_dep_dict()
-    ddd_drug_dict = get_ddd_drug_dict()
-    # 断点续录
-    record_completed = int(input('已录入记录条数为？'))
-    for one_presc in presc_data[record_completed:]:
-        report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict)
-        report.do_report()
-    print(f"————已遍历所有处方，共计{record_completed}条！")
