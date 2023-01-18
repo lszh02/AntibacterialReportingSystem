@@ -142,20 +142,3 @@ class DDDReport:
         pyautogui.hotkey('ctrl', 'v')
         print("输入药品金额:", money)
         return f"输入药品金额：{money}"
-
-
-if __name__ == '__main__':
-    # 打开文件，获取sheet页
-    excel_path = r'C:\Users\sloan\Desktop\report0'
-    file_name = "最终数据-第二季度 (1).xls"
-    worksheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet2')
-    print(rf"已打开工作表：{excel_path}\{file_name},获取Sheet1")
-
-    # 实例化处方数据
-    ddd_data = DDDData(worksheet).get_ddd_data()
-    # 断点续录
-    record_completed = int(input('已录入记录条数为？'))
-
-    report = DDDReport(ddd_data, record_completed)
-    report.do_report()
-    print(f"————已遍历所有处方，共计{record_completed}条！")
