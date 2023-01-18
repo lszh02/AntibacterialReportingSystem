@@ -27,25 +27,6 @@ def mouse_click(img, click_times=1, l_or_r="left"):
         time.sleep(0.5)
 
 
-def get_ddd_drug_dict():
-    try:
-        with open(file=rf'{db_path}\ddd_drug_dict.json', mode='r', encoding='utf-8') as f:
-            dep_dict = json.load(f)
-            print('成功读取DDD药品字典！')
-            return dep_dict
-    except Exception as e:
-        print('打开DDD药品字典时出错：', e)
-
-
-def update_ddd_drug_dict(ddd_drug_name_dict):
-    try:
-        with open(file=rf'{db_path}\ddd_drug_dict.json', mode='w', encoding='utf-8') as f:
-            json.dump(ddd_drug_name_dict, f, ensure_ascii=False, indent=2)
-            print(rf'已更新DDD药品字典，并保存于{db_path}\ddd_drug_dict.json')
-    except Exception as e:
-        print('已更新DDD药品字典，但以json格式保存科室字典时出错：', e)
-
-
 class DDDData:
     def __init__(self, drug_data_sheet):
         """
@@ -75,41 +56,41 @@ class DDDData:
         return ddd_data
 
 
-def input_drug_money(one_drug_info):
-    mouse_click(rf"{res_path}/image/ddd_image/drugs_money.png")
-    money = one_drug_info.get('money')
-    pyperclip.copy(round(money, 2))
-    pyautogui.hotkey('ctrl', 'v')
-    print("输入药品金额:", money)
-    return f"输入药品金额：{money}"
-
-
-def input_drug_count(one_drug_info):
-    mouse_click(rf"{res_path}/image/ddd_image/drugs_count.png")
-    quantity = one_drug_info.get('quantity')
-    pyperclip.copy(quantity)
-    pyautogui.hotkey('ctrl', 'v')
-    print("输入药品总数:", quantity)
-    return f"输入药品数量：{quantity}"
-
-
 class DDDReport:
-    def __init__(self, ddd_data, ddd_drug_dict, record_completed):
+    def __init__(self, ddd_data, record_completed):
         self.ddd_data = ddd_data
-        self.ddd_drug_dict = ddd_drug_dict
+        self.ddd_drug_dict = DDDReport.get_ddd_drug_dict()
         self.record_completed = record_completed
+
+    @staticmethod
+    def get_ddd_drug_dict():
+        try:
+            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='r', encoding='utf-8') as f:
+                dep_dict = json.load(f)
+                print('成功读取DDD药品字典！')
+                return dep_dict
+        except Exception as e:
+            print('打开DDD药品字典时出错：', e)
+
+    @staticmethod
+    def update_ddd_drug_dict(ddd_drug_name_dict):
+        try:
+            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='w', encoding='utf-8') as f:
+                json.dump(ddd_drug_name_dict, f, ensure_ascii=False, indent=2)
+                print(rf'已更新DDD药品字典，并保存于{db_path}\ddd_drug_dict.json')
+        except Exception as e:
+            print('已更新DDD药品字典，但以json格式保存科室字典时出错：', e)
 
     def do_report(self):
         for one_info in self.ddd_data[self.record_completed:]:
-
             # 输入药品名称
             self.input_drug_name(one_info)
 
             # 输入药品数量
-            input_drug_count(one_info)
+            DDDReport.input_drug_count(one_info)
 
             # 输入药品金额
-            input_drug_money(one_info)
+            DDDReport.input_drug_money(one_info)
 
             # 保存数据
             mouse_click(rf"{res_path}/image/ddd_image/save.png")
@@ -135,7 +116,7 @@ class DDDReport:
             value = input(f'请输入{drug_name}在上报系统中的名字——>')
             # 增加一条，更新字典
             self.ddd_drug_dict[drug_name] = value
-            update_ddd_drug_dict(self.ddd_drug_dict)
+            DDDReport.update_ddd_drug_dict(self.ddd_drug_dict)
 
         while True:
             time.sleep(0.001)
@@ -143,6 +124,24 @@ class DDDReport:
                 # up = 0 or 1, down = -127 or -128
                 break
         return f"输入药品名称：{drug_name}"
+
+    @staticmethod
+    def input_drug_count(one_drug_info):
+        mouse_click(rf"{res_path}/image/ddd_image/drugs_count.png")
+        quantity = one_drug_info.get('quantity')
+        pyperclip.copy(quantity)
+        pyautogui.hotkey('ctrl', 'v')
+        print("输入药品总数:", quantity)
+        return f"输入药品数量：{quantity}"
+
+    @staticmethod
+    def input_drug_money(one_drug_info):
+        mouse_click(rf"{res_path}/image/ddd_image/drugs_money.png")
+        money = one_drug_info.get('money')
+        pyperclip.copy(round(money, 2))
+        pyautogui.hotkey('ctrl', 'v')
+        print("输入药品金额:", money)
+        return f"输入药品金额：{money}"
 
 
 if __name__ == '__main__':
@@ -154,10 +153,9 @@ if __name__ == '__main__':
 
     # 实例化处方数据
     ddd_data = DDDData(worksheet).get_ddd_data()
-    ddd_drug_name_dict = get_ddd_drug_dict()
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))
 
-    report = DDDReport(ddd_data, ddd_drug_name_dict, record_completed)
+    report = DDDReport(ddd_data, record_completed)
     report.do_report()
     print(f"————已遍历所有处方，共计{record_completed}条！")

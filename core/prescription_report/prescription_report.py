@@ -8,7 +8,7 @@ import win32api
 from core.ddd_report.ddd_report import get_ddd_drug_dict
 from db import database
 
-from db.database import read_excel, get_dep_dict
+from db.database import read_excel, Prescription
 
 current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
@@ -295,7 +295,7 @@ if __name__ == '__main__':
     # 实例化处方数据
     presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
     # 获取科室字典
-    dep_dict = get_dep_dict()
+    dep_dict = Prescription.get_dep_dict()
     ddd_drug_dict = get_ddd_drug_dict()
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))
