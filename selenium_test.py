@@ -6,9 +6,11 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
 
 driver = webdriver.Chrome()  # 启动浏览器
-driver.implicitly_wait(20)  # 隐式等待
+driver.implicitly_wait(60)  # 隐式等待
+wait = WebDriverWait(driver, 60)  # 显式等待
 
 driver.get("http://y.chinadtc.org.cn/login")  # 打开网址
 driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
@@ -18,7 +20,8 @@ driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys('NYDyjk233***')  #
 driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
 
 driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-time.sleep(0.5)
+# time.sleep(10)
+wait.until(ec.alert_is_present())
 driver.switch_to.alert.accept()
 
 driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
@@ -71,7 +74,8 @@ else:
             break
 # 保存数据
 driver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
-time.sleep(0.5)
+# time.sleep(0.5)
+wait.until(ec.alert_is_present())
 driver.switch_to.alert.accept()
 
 # 判断是否有抗菌药物
