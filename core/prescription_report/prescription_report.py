@@ -9,12 +9,16 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+from core.ddd_report.ddd_report import DDDReport
+from db import database
+from db.database import read_excel
+
 current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 driver = webdriver.Chrome()  # 启动浏览器
-driver.implicitly_wait(60)  # 隐式等待
-wait = WebDriverWait(driver, 60)  # 显式等待
+driver.implicitly_wait(20)  # 隐式等待
+wait = WebDriverWait(driver, 120)  # 显式等待
 
 driver.get("http://y.chinadtc.org.cn/login")  # 打开网址
 driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
@@ -31,16 +35,16 @@ driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单�
 driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
 
 
-def mouse_click(img, click_times=1, l_or_r="left"):
-    # 定义鼠标事件
-    # pyautogui库其他用法 https://blog.csdn.net/qingfengxd1/article/details/108270159
-    while True:
-        location = pyautogui.locateCenterOnScreen(img, confidence=0.9)
-        if location is not None:
-            pyautogui.click(location.x, location.y, clicks=click_times, interval=0.2, duration=0.2, button=l_or_r)
-            break
-        print("未找到匹配图片,0.2秒后重试")
-        time.sleep(0.2)
+# def mouse_click(img, click_times=1, l_or_r="left"):
+#     # 定义鼠标事件
+#     # pyautogui库其他用法 https://blog.csdn.net/qingfengxd1/article/details/108270159
+#     while True:
+#         location = pyautogui.locateCenterOnScreen(img, confidence=0.9)
+#         if location is not None:
+#             pyautogui.click(location.x, location.y, clicks=click_times, interval=0.2, duration=0.2, button=l_or_r)
+#             break
+#         print("未找到匹配图片,0.2秒后重试")
+#         time.sleep(0.2)
 
 
 class PrescriptionReport:
@@ -105,45 +109,53 @@ class PrescriptionReport:
             age = age.split('岁')[0]
             age_sel.select_by_visible_text('岁')
             self.webdriver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}岁')
             return f'输入年龄:{age}岁'
         elif '月' in age:
             age = age.split('月')[0]
             age_sel.select_by_visible_text('月')
             self.webdriver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}月')
             return f'输入年龄:{age}月'
         elif '周' in age:
             age = age.split('周')[0]
             age_sel.select_by_visible_text('周')
             self.webdriver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}周')
             return f'输入年龄:{age}周'
         elif '天' in age:
             age = age.split('天')[0]
             age_sel.select_by_visible_text('天')
             self.webdriver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}天')
             return f'输入年龄:{age}天'
 
     def input_gender(self):
         gender = self.prescription_info.get("gender")
         if gender == 'man':
             self.webdriver.find_element(By.ID, 'sexM').click()  # 'sexM'为男
+            print(f"选择性别：男")
             return f"选择性别：男"
         elif gender == 'woman':
             self.webdriver.find_element(By.ID, 'sexW').click()  # 'sexW'为女
+            print(f"选择性别：女")
             return f"选择性别：女"
 
     def input_total_money(self):
         money = self.prescription_info.get("total_money")
-        self.webdriver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
+        if money <= 10000:
+            self.webdriver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
+        else:
+            wait.until(ec.alert_is_present())
+            self.webdriver.switch_to.alert.accept()
 
-        if money > 10000:
-            # fixme
-            # pyautogui.alert(text='药品金额大于10000元！', title='请确认：', button='YES')
-            pass
+        print(f'输入处方金额:{round(money, 2)}')
         return f'输入处方金额:{round(money, 2)}'
 
     def input_quantity_of_drugs(self):
         drugs_count = len(self.prescription_info.get("drug_info"))
         self.webdriver.find_element(By.ID, 'outDrugs').send_keys(drugs_count)
+        print(f'输入药品数量:{drugs_count}')
         return f'输入药品数量:{drugs_count}'
 
     def injection_or_not(self):
@@ -156,8 +168,10 @@ class PrescriptionReport:
         if inj_count != 0:
             self.webdriver.find_element(By.ID, 'infusionY').click()
             self.webdriver.find_element(By.ID, 'infusionNum').send_keys(inj_count)
+            print(f'输入注射剂数量:{inj_count}')
             return f'输入注射剂数量:{inj_count}'
         else:
+            print('该处方中无注射剂')
             return '该处方中无注射剂'
 
     def input_diagnosis(self):
@@ -170,18 +184,22 @@ class PrescriptionReport:
             if '泌尿系感染' in diagnosis_list[i]:
                 diagnosis.replace('泌尿系感染', '泌尿道感染')
 
-            self.webdriver.find_element(By.ID, 'diagnosisName1').click()
+            self.webdriver.find_element(By.ID, 'diagnosisName'+f'{i+1}').click()
             self.webdriver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
             self.webdriver.find_element(By.CSS_SELECTOR, '.diagnosisShade input[value="查询"]').click()
             # 获取网络诊断列表，与输入的诊断进行匹配
+            time.sleep(0.2)
             web_diagnosis_list = self.webdriver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
+            time.sleep(0.2)
+            diagnosis_change = self.webdriver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
             for web_diagnosis in web_diagnosis_list:
-                if web_diagnosis.text == diagnosis:
+                print(f'------{web_diagnosis.text}--------')
+                if web_diagnosis.text == diagnosis or web_diagnosis.text == diagnosis_change:
                     web_diagnosis.click()
                     print(f'输入诊断：{diagnosis}')
                     break
             else:
-                print('请手动输入诊断！')
+                print('请手动输入诊断！完成后单击右键继续……')
                 while True:
                     time.sleep(0.001)
                     if win32api.GetKeyState(0x02) < 0:
@@ -212,6 +230,8 @@ class PrescriptionReport:
                 # 输入抗菌药名称
                 self.webdriver.find_element(By.ID, 'medicineName').click()
                 self.webdriver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+                self.webdriver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
+
                 # fixme 尚未实现自动选择药品规格
                 while True:
                     time.sleep(0.001)
@@ -232,7 +252,7 @@ class PrescriptionReport:
                         break
 
                 # 保存抗菌药物
-                self.webdriver.find_element(By.ID, "saveOutpatientDetail('mz')").click()
+                self.webdriver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
                 wait.until(ec.alert_is_present())
                 self.webdriver.switch_to.alert.accept()
                 print(f"输入抗菌药物:{drug_name}")
@@ -247,9 +267,19 @@ class JzPrescriptionReport(PrescriptionReport):
 
 
 if __name__ == '__main__':
-    data = None
-    dep_dict = None
-    ddd_drug_dict = None
+    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
+    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
+    file_name = r'门诊处方点评（100张）-20221216上午.xls'
+    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
+    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
 
-    r = PrescriptionReport(driver, data, dep_dict, ddd_drug_dict)
-    r.do_report()
+    # 实例化处方数据
+    presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
+    # 获取科室字典
+    dep_dict = database.Prescription.get_dep_dict()
+    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+    # 断点续录
+    record_completed = int(input('已录入记录条数为？'))
+    for one_presc in presc_data[record_completed:]:
+        r = PrescriptionReport(driver, one_presc, dep_dict, ddd_drug_dict)
+        r.do_report()
