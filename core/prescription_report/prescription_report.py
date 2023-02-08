@@ -1,6 +1,5 @@
 import os.path
 
-# import pyautogui
 import time
 import win32api
 from selenium import webdriver
@@ -17,8 +16,9 @@ current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 driver = webdriver.Chrome()  # 启动浏览器
-driver.implicitly_wait(20)  # 隐式等待
-wait = WebDriverWait(driver, 120)  # 显式等待
+wait_time = 120  # 等待网页相应时间
+driver.implicitly_wait(wait_time)  # 隐式等待
+wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
 driver.get("http://y.chinadtc.org.cn/login")  # 打开网址
 driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
@@ -35,31 +35,19 @@ driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单�
 driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
 
 
-# def mouse_click(img, click_times=1, l_or_r="left"):
-#     # 定义鼠标事件
-#     # pyautogui库其他用法 https://blog.csdn.net/qingfengxd1/article/details/108270159
-#     while True:
-#         location = pyautogui.locateCenterOnScreen(img, confidence=0.9)
-#         if location is not None:
-#             pyautogui.click(location.x, location.y, clicks=click_times, interval=0.2, duration=0.2, button=l_or_r)
-#             break
-#         print("未找到匹配图片,0.2秒后重试")
-#         time.sleep(0.2)
-
-
 class PrescriptionReport:
-    def __init__(self, webdriver, one_prescription_info, dep_dict, ddd_drug_dict):
+    def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict, webdriver):
         """
-        传入selenium的webdriver，一条处方信息，科室字典，抗菌药字典，执行网页自动上报。
-        :param webdriver: selenium的webdriver
+        传入一条处方信息，科室字典，抗菌药字典和webdriver对象，执行网页自动上报。
         :param one_prescription_info: 一条处方信息
         :param dep_dict: 科室字典
         :param ddd_drug_dict: 抗菌药字典
+        :param webdriver: selenium的webdriver
         """
-        self.webdriver = webdriver
         self.prescription_info = one_prescription_info
         self.dep_dict = dep_dict
         self.ddd_drug_dict = ddd_drug_dict
+        self.webdriver = webdriver
 
     def do_report(self):
         # 选择科室
@@ -188,12 +176,14 @@ class PrescriptionReport:
             self.webdriver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
             self.webdriver.find_element(By.CSS_SELECTOR, '.diagnosisShade input[value="查询"]').click()
             # 获取网络诊断列表，与输入的诊断进行匹配
-            time.sleep(0.2)
+            # fixme
+            #  此处输入诊断点击查询后，网页可能还没加载出“网络诊断”的所有内容，比如web_diagnosis尚无text属性，无法进行匹配判断而报错。
+            time.sleep(0.3)
+            # wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))
             web_diagnosis_list = self.webdriver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
-            time.sleep(0.2)
             diagnosis_change = self.webdriver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
             for web_diagnosis in web_diagnosis_list:
-                print(f'------{web_diagnosis.text}--------')
+                # print(f'------{web_diagnosis.text}--------')
                 if web_diagnosis.text == diagnosis or web_diagnosis.text == diagnosis_change:
                     web_diagnosis.click()
                     print(f'输入诊断：{diagnosis}')
