@@ -85,16 +85,39 @@ driver.find_element(By.CSS_SELECTOR, '#outpatientTable input[value="录入详细
 # 录入抗菌药物
 driver.find_element(By.ID, 'medicineName').click()
 driver.find_element(By.ID, 'searchDrugs').send_keys('罗红霉素\n')
-while True:
-    time.sleep(0.001)
-    if win32api.GetKeyState(0x02) < 0:
-        # up = 0 or 1, down = -127 or -128
-        break
 
-# driver.find_element(By.ID, 'diagnosisName2').click()
-# driver.find_element(By.ID, 'diagnosisName3').click()
-# driver.find_element(By.ID, 'diagnosisName4').click()
-# driver.find_element(By.ID, 'diagnosisName5').click()
+drug_name = '罗红霉素颗粒'
+drug_specification = '0.15g'
+drug_list = driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  #  每一行
+for i in drug_list:
+    print(i.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(2)").text)  # 药品网络名称
+    print(i.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(3)").text)  # 药品网络规格
+    print('------------------------')
+    if drug_name == i.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(2)").text and \
+        drug_specification == i.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(3)").text:
+        i.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+        break
+else:
+    print('请选择相应的药品！右键继续……')
+    while True:
+        time.sleep(0.001)
+        if win32api.GetKeyState(0x02) < 0:
+            # up = 0 or 1, down = -127 or -128
+            break
+
+
+drug_unit = '粒'
+Select(driver.find_element(By.ID, "totalMedicineUnit")).select_by_visible_text(drug_unit)
+Select(driver.find_element(By.ID, "onceMeterUnit")).select_by_visible_text(drug_unit)
+
+freq = '3/日'
+Select(driver.find_element(By.ID, "medicineFrequency")).select_by_visible_text(freq)
+
+way = '静脉滴注'
+Select(driver.find_element(By.ID, "medicineWay")).select_by_visible_text(way)
+
+
+
 
 
 input()
