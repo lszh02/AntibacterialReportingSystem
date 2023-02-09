@@ -16,7 +16,7 @@ current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 driver = webdriver.Chrome()  # 启动浏览器
-wait_time = 120  # 等待网页相应时间
+wait_time = 60  # 等待网页相应时间
 driver.implicitly_wait(wait_time)  # 隐式等待
 wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
@@ -172,7 +172,7 @@ class PrescriptionReport:
             if '泌尿系感染' in diagnosis_list[i]:
                 diagnosis.replace('泌尿系感染', '泌尿道感染')
 
-            self.webdriver.find_element(By.ID, 'diagnosisName'+f'{i+1}').click()
+            self.webdriver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.webdriver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
             self.webdriver.find_element(By.CSS_SELECTOR, '.diagnosisShade input[value="查询"]').click()
             # 获取网络诊断列表，与输入的诊断进行匹配
@@ -215,6 +215,7 @@ class PrescriptionReport:
         antibacterial_list = []
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
+            drug_specification = one_drug_info.get('specifications')
             if drug_name in self.ddd_drug_dict:
                 antibacterial_list.append(drug_name)
                 # 输入抗菌药名称
@@ -222,24 +223,30 @@ class PrescriptionReport:
                 self.webdriver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
                 self.webdriver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
-                # fixme 尚未实现自动选择药品规格
-                while True:
-                    time.sleep(0.001)
-                    if win32api.GetKeyState(0x02) < 0:
-                        # up = 0 or 1, down = -127 or -128
+                # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
+                web_drug_rows = driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
+                one_row_unit = ''
+                for one_row in web_drug_rows:
+                    one_row_name = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(2)").text  # 药品网络名称
+                    one_row_spec = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
+                    one_row_unit = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(4)").text  # 药品网络单位
+                    if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[
+                        0] == one_row_spec:
+                        one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
                         break
+                else:
+                    print('请选择相应的药品！右键继续……')
+                    while True:
+                        time.sleep(0.001)
+                        if win32api.GetKeyState(0x02) < 0:
+                            # up = 0 or 1, down = -127 or -128
+                            break
 
-                # 输入抗菌药金额
-                self.webdriver.find_element(By.ID, 'amountOutpatient').send_keys(one_drug_info.get('money'))
-
-                # 输入抗菌药数量
-                self.webdriver.find_element(By.ID, 'totalMedicine').send_keys(one_drug_info.get('quantity'))
-                # fixme 尚未实现该处细节操作自动化
-                while True:
-                    time.sleep(0.001)
-                    if win32api.GetKeyState(0x02) < 0:
-                        # up = 0 or 1, down = -127 or -128
-                        break
+                # 输入其他细节
+                self.input_other_details(one_drug_info, one_row_unit)
 
                 # 保存抗菌药物
                 self.webdriver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
@@ -250,26 +257,45 @@ class PrescriptionReport:
         self.webdriver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
         return f'输入抗菌药物{len(antibacterial_list)}个：{antibacterial_list}'
 
+    def input_other_details(self, one_drug_info, one_row_unit):
+        freq_dict = {'QN': '每晚', 'QD': '1/日', 'Q12H': 'q2h', 'P.R.N': '其他', 'ONCE': '即刻', 'QID': '4/日',
+                     'BIW1': '其他', 'BID': '2/日',
+                     'TID': '3/日', '(空白)': '其他'}
+        way_dict = {'口服': '口服', '血液透析 ': '腹膜透析', '外用': '外用', '肌肉注射': '肌肉注射', '吸入': '雾化吸入', '涂眼睑内': '外用', '滴眼': '滴眼',
+                    '(空白)': '皮试', '皮下注射(不带费用、耗材）': '皮下注射', '静脉注射(麻醉科专用)': '静脉注射', '塞肛': '外用', '含服': '口服', '局麻用': '肌肉注射',
+                    '喷喉': '外用'}
+        dose_unit_dict = {'丸': '粒', 'ug': '粒', '吸': '粒', 'ml': 'ml', '片': '片', 'g': '克', '粒': '粒', 'mg': '毫克'}
+
+        try:
+            # 输入抗菌药金额
+            self.webdriver.find_element(By.ID, 'amountOutpatient').send_keys(one_drug_info.get('money'))
+
+            # 输入抗菌药总数量和剂量
+            self.webdriver.find_element(By.ID, 'totalMedicine').send_keys(one_drug_info.get('quantity'))
+            self.webdriver.find_element(By.ID, 'onceMeter').send_keys(one_drug_info.get('dose'))
+
+            # 选择数量单位和剂量单位
+            Select(driver.find_element(By.ID, "totalMedicineUnit")).select_by_visible_text(one_row_unit)
+            Select(driver.find_element(By.ID, "onceMeterUnit")).select_by_visible_text(
+                dose_unit_dict.get(one_drug_info.get('doseUnit')))
+
+            # 选择用法（频次）
+            Select(driver.find_element(By.ID, "medicineFrequency")).select_by_visible_text(
+                freq_dict.get(one_drug_info.get('frequency')))
+
+            # 选择给药途径
+            Select(driver.find_element(By.ID, "medicineWay")).select_by_visible_text(
+                way_dict.get(one_drug_info.get('usage')))
+        except Exception as e:
+            print(f'输入抗菌药时出错，报错信息：{e}')
+        print(f'请确认抗菌药输入无误后单击右键继续……')
+        while True:
+            time.sleep(0.001)
+            if win32api.GetKeyState(0x02) < 0:
+                # up = 0 or 1, down = -127 or -128
+                break
+
 
 class JzPrescriptionReport(PrescriptionReport):
     def input_department_name(self):
         pass
-
-
-if __name__ == '__main__':
-    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
-    file_name = r'门诊处方点评（100张）-20221216上午.xls'
-    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
-    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
-
-    # 实例化处方数据
-    presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
-    # 获取科室字典
-    dep_dict = database.Prescription.get_dep_dict()
-    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
-    # 断点续录
-    record_completed = int(input('已录入记录条数为？'))
-    for one_presc in presc_data[record_completed:]:
-        r = PrescriptionReport(driver, one_presc, dep_dict, ddd_drug_dict)
-        r.do_report()
