@@ -1,4 +1,4 @@
-# -*- encoding = utf-8 -*-
+# -*- coding:utf-8 -*-
 import os
 import sys
 import time
@@ -11,9 +11,11 @@ from PyQt5.QtCore import pyqtSignal, QThread, QObject
 from PyQt5.QtGui import QIcon, QStandardItemModel
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox, QLineEdit, QWidget, QHeaderView, \
     QAbstractItemView, QTableView
+from selenium import webdriver
+from selenium.webdriver.support.wait import WebDriverWait
 
 from core.ddd_report.ddd_report import DDDData, DDDReport
-from core.prescription_report.prescription_report import mouse_click, PrescriptionReport, JzPrescriptionReport
+from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport, login
 from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
 
@@ -39,12 +41,6 @@ class PrescriptionUpdateDep(Prescription, QWidget):
                 dep_pic_name, ok = QInputDialog.getText(self, "科室字典需更新", f'{dep_chinese_name} 未关联对应字典，请输入:',
                                                         QLineEdit.Normal, "dep_name")
                 dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
-
-                # 后两项分别为按钮(以|隔开)、默认按钮(省略则默认为第一个按钮)
-                # 选择Yes代码中replay为16384，选择No则replay为65536
-                reply = QMessageBox.warning(self, "字典更新需截图",
-                                            f'请截图并命名为{dep_pic_name}.png，存入res/image/menzhen(或jizhen)_image/dep_image文件夹中！',
-                                            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
 
             row_x = 1
             while row_num + row_x < self._prescription_data_sheet.nrows:
@@ -138,6 +134,7 @@ class PrescriptionReportThread(QThread):
     # 信号是类变量，必须在类中定义，不能在实例方法中定义，否则后面发射信号和连接槽方法时都会报错。
     presc_sig = pyqtSignal(dict)
     prescription_progress_sig = pyqtSignal(str)
+    sig_end = pyqtSignal(str)
 
     def __init__(self, data_type, data, record_completed):
         super(PrescriptionReportThread, self).__init__()
@@ -149,13 +146,18 @@ class PrescriptionReportThread(QThread):
         # 获取科室字典和抗菌药物字典
         dep_dict = Prescription.get_dep_dict()
         ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+        # driver = webdriver.Chrome()  # 启动浏览器
+        # wait_time = 60  # 等待网页相应时间
+        # driver.implicitly_wait(wait_time)  # 隐式等待
+        # wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
+        login()
 
         # 遍历剩余处方信息
         for one_presc in self.data[self.record_completed:]:
             self.presc_sig.emit(one_presc)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict)
+                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, webdriver)
             elif self.data_type == 2:
                 # 按急诊处方上报
                 report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict)
@@ -169,16 +171,14 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(report.input_quantity_of_drugs())  # 发送信号：输入药品总数
             self.prescription_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
             self.prescription_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
-            mouse_click(rf"{res_path}/image/prescription_image/save.png")
-            # time.sleep(0.3)
-            mouse_click(rf"{res_path}/image/prescription_image/enter.png")
-            self.prescription_progress_sig.emit("保存数据！")  # 发送信号：进度信息
+            self.prescription_progress_sig.emit(report.save_data())  # 发送信号：保存数据
             self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
             self.prescription_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
             self.prescription_progress_sig.emit('')  # 空一行
         self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')  # 空一行
+        self.sig_end.emit('完成上报任务，返回主界面！')
 
 
 class MyWindow(QMainWindow, Ui_MainWindow):
@@ -213,8 +213,8 @@ class MyWindow(QMainWindow, Ui_MainWindow):
             self.presc_sheet.setEnabled(False)
             self.drug_sheet.setEnabled(False)
         else:
-            self.presc_sheet.setCurrentIndex(3)
-            self.drug_sheet.setCurrentIndex(4)
+            self.presc_sheet.setCurrentIndex(2)
+            self.drug_sheet.setCurrentIndex(3)
             self.ddd_sheet.setEnabled(False)
             self.presc_sheet.setEnabled(True)
             self.drug_sheet.setEnabled(True)

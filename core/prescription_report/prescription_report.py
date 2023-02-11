@@ -21,7 +21,7 @@ driver.implicitly_wait(wait_time)  # 隐式等待
 wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
 
-def longin(url="http://y.chinadtc.org.cn/login", account='', pwd=''):
+def login(url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***', mode=1):
     driver.get(url)  # 打开网址
     driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
     driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
@@ -34,8 +34,10 @@ def longin(url="http://y.chinadtc.org.cn/login", account='', pwd=''):
     driver.switch_to.alert.accept()
 
     driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-    # driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
-    driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
+    if mode == 1:
+        driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
+    elif mode == 2:
+        driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
 
 
 class PrescriptionReport:
@@ -325,4 +327,22 @@ class JzPrescriptionReport(PrescriptionReport):
         return "保存数据"
 
 
+if __name__ == '__main__':
+    login()
+    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
+    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年11月'
+    file_name = r'急诊处方点评-20221116-医保.xls'
+    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
+    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet5')
 
+    # 实例化处方数据
+    presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
+    # 获取科室字典
+    dep_dict = database.Prescription.get_dep_dict()
+    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+    # 断点续录
+    record_completed = int(input('已录入记录条数为？'))
+    for one_presc in presc_data[record_completed:]:
+        r = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver)
+        r.do_report()
+    input('录入完成！确认输入Yes')
