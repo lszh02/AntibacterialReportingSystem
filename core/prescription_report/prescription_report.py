@@ -20,19 +20,22 @@ wait_time = 60  # 等待网页相应时间
 driver.implicitly_wait(wait_time)  # 隐式等待
 wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-driver.get("http://y.chinadtc.org.cn/login")  # 打开网址
-driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-driver.find_element(By.CSS_SELECTOR, "#account").send_keys('440306311001')  # 输入账号
-driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys('NYDyjk233***')  # 输入密码
-driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
 
-driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-wait.until(ec.alert_is_present())
-driver.switch_to.alert.accept()
+def longin(url="http://y.chinadtc.org.cn/login", account='', pwd=''):
+    driver.get(url)  # 打开网址
+    driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
+    driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
+    driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
+    driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
+    driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
 
-driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
+    driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
+    wait.until(ec.alert_is_present())
+    driver.switch_to.alert.accept()
+
+    driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
+    # driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
+    driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
 
 
 class PrescriptionReport:
@@ -72,10 +75,7 @@ class PrescriptionReport:
         self.input_diagnosis()
 
         # 保存数据
-        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
-        wait.until(ec.alert_is_present())
-        self.webdriver.switch_to.alert.accept()
-        print("保存数据")
+        self.save_data()
 
         # 判断是否有抗菌药物
         self.antibacterial_or_not()
@@ -175,21 +175,24 @@ class PrescriptionReport:
             self.webdriver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.webdriver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
             self.webdriver.find_element(By.CSS_SELECTOR, '.diagnosisShade input[value="查询"]').click()
+
             # 获取网络诊断列表，与输入的诊断进行匹配
-            # fixme
-            #  此处输入诊断点击查询后，网页可能还没加载出“网络诊断”的所有内容，比如web_diagnosis尚无text属性，无法进行匹配判断而报错。
-            time.sleep(0.3)
-            # wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))
-            web_diagnosis_list = self.webdriver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
-            diagnosis_change = self.webdriver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
-            for web_diagnosis in web_diagnosis_list:
-                # print(f'------{web_diagnosis.text}--------')
-                if web_diagnosis.text == diagnosis or web_diagnosis.text == diagnosis_change:
-                    web_diagnosis.click()
-                    print(f'输入诊断：{diagnosis}')
-                    break
-            else:
-                print('请手动输入诊断！完成后单击右键继续……')
+            try:
+                # fixme 此处输入诊断点击查询后，网页可能还没加载出“网络诊断”的所有内容，比如web_diagnosis尚无text属性，无法进行匹配判断而报错。
+                time.sleep(0.3)
+                # wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))
+                web_diagnosis_list = self.webdriver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
+                # 自动录入诊断可能无响应，此处获取手动修改后的输入诊断
+                diagnosis_change = self.webdriver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
+                for web_diagnosis in web_diagnosis_list:
+                    # print(f'------{web_diagnosis.text}--------')
+                    if web_diagnosis.text == diagnosis_change:
+                        web_diagnosis.click()
+                        print(f'输入诊断：{diagnosis}')
+                        break
+            except Exception as e:
+                print(f'输入诊断出错！错误信息为：{e}')
+                print('请手动输入！完成后单击右键继续……')
                 while True:
                     time.sleep(0.001)
                     if win32api.GetKeyState(0x02) < 0:
@@ -254,10 +257,14 @@ class PrescriptionReport:
                 self.webdriver.switch_to.alert.accept()
                 print(f"输入抗菌药物:{drug_name}")
 
-        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
+        self.goto_main_ui()
         return f'输入抗菌药物{len(antibacterial_list)}个：{antibacterial_list}'
 
     def input_other_details(self, one_drug_info, one_row_unit):
+        freq_web_list = ['即刻', '1/日', '2/日', '3/日', '4/日', 'q2h', 'q6h', 'q8h', 'q12h', '每晚', '其他']
+        way_web_list = ['静脉滴注', '静脉泵入', '静脉推注', '肌肉注射', '静脉注射', '皮下注射', '球后注射', '结膜下注射', '眼内注射', '直肠给药', '雾化吸入', '肠道准备',
+                        '口服', '外用', '滴鼻', '滴耳', '滴眼', '鞘内注射', '腹膜透析', '皮试']
+        dose_unit_web_list = ['克', '毫克', '万单位', '滴', 'ml', '片', '支', '粒', '瓶', '包', '袋']
         freq_dict = {'QN': '每晚', 'QD': '1/日', 'Q12H': 'q2h', 'P.R.N': '其他', 'ONCE': '即刻', 'QID': '4/日',
                      'BIW1': '其他', 'BID': '2/日',
                      'TID': '3/日', '(空白)': '其他'}
@@ -295,7 +302,27 @@ class PrescriptionReport:
                 # up = 0 or 1, down = -127 or -128
                 break
 
+    def save_data(self):
+        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
+        wait.until(ec.alert_is_present())
+        self.webdriver.switch_to.alert.accept()
+        print("保存数据")
+        return "保存数据"
+
+    def goto_main_ui(self):
+        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
+
 
 class JzPrescriptionReport(PrescriptionReport):
-    def input_department_name(self):
-        pass
+    def goto_main_ui(self):
+        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value = "返回急诊处方用药情况调查表"]').click()
+
+    def save_data(self):
+        self.webdriver.find_element(By.CSS_SELECTOR, 'input[value="保存急诊处方用药情况调查表"]').click()  # 单击保存
+        wait.until(ec.alert_is_present())
+        self.webdriver.switch_to.alert.accept()
+        print("保存数据")
+        return "保存数据"
+
+
+

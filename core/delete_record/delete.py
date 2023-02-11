@@ -13,7 +13,7 @@ driver.implicitly_wait(wait_time)  # 隐式等待
 wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
 
-def longin(url="http://y.chinadtc.org.cn/login", account="440306311001", pwd="NYDyjk233***"):
+def longin(url="http://y.chinadtc.org.cn/login", account='', pwd=''):
     driver.get(url)  # 打开网址
     driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
     driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
@@ -53,3 +53,5 @@ if __name__ == '__main__':
     longin()
     del_num = input('需要删除多少条记录？————>')
     delete_record(int(del_num))
+    input('完成删除！确认输入Yes')
+
