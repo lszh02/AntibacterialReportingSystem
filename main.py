@@ -3,8 +3,6 @@ import os
 import sys
 import time
 
-import pyautogui
-import pyperclip
 import win32api
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSignal, QThread, QObject
@@ -59,77 +57,6 @@ class PrescriptionUpdateDep(Prescription, QWidget):
         return dep_dict
 
 
-class DDDReportByUI(DDDReport, QObject):
-    ddd_drug_sig = pyqtSignal(dict)
-    ddd_progress_sig = pyqtSignal(str)
-    ddd_update_sig = pyqtSignal(str)
-    start_record_sig = pyqtSignal(str)
-    isPause = False
-    ddd_drug_name = ''
-    start_record = None
-
-    def __init__(self, ddd_data):
-        web_driver = webdriver.Chrome()  # 启动浏览器
-        wait_time = 60  # 等待网页相应时间
-        web_driver.implicitly_wait(wait_time)  # 隐式等待
-        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
-        login(web_driver=web_driver)
-
-        DDDReport.__init__(self, ddd_data=ddd_data, web_driver=web_driver, wait=wait)
-        QObject.__init__(self)
-
-    def input_drug_name(self, one_drug_info):
-        # 输入抗菌药名称
-        self.web_driver.find_element(By.ID, 'medicineName').click()
-        drug_name = one_drug_info.get('drug_name')
-        self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
-        if drug_name in self.ddd_drug_dict:
-            self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
-        else:
-            self.ddd_update_sig.emit(f'{drug_name}')  # 发送信号：输入药品名称
-            self.isPause = True
-            print('暂停上报，等待更新药品字典')
-            while True:
-                if self.isPause:
-                    time.sleep(0.1)
-                    continue
-                else:
-                    # 增加一条，更新字典
-                    self.ddd_drug_dict[drug_name] = self.ddd_drug_name
-                    DDDReportByUI.update_ddd_drug_dict(self.ddd_drug_dict)
-                    break
-
-        print('请选择相应的药品！右键继续……')
-        while True:
-            time.sleep(0.001)
-            if win32api.GetKeyState(0x02) < 0:
-                # up = 0 or 1, down = -127 or -128
-                break
-        return f"输入药品名称：{drug_name}"
-
-    def do_report(self):
-        self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
-        # 等待UI传参
-        while self.start_record is None:
-            time.sleep(0.01)
-
-        # 遍历剩余信息
-        for one_info in self.ddd_data[self.start_record:]:
-            self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
-            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
-            self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
-            self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
-            self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
-            self.ddd_progress_sig.emit(self.save_data())  # 发送信号：输入药品金额
-            self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
-
-            self.start_record += 1
-            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}条记录！—————")  # 发送信号：进度信息
-            self.ddd_progress_sig.emit('')  # 空一行
-        self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
-        # self.finished_sig.emit()
-
-
 class PrescriptionReportThread(QThread):
     # 信号是类变量，必须在类中定义，不能在实例方法中定义，否则后面发射信号和连接槽方法时都会报错。
     presc_sig = pyqtSignal(dict)
@@ -180,6 +107,89 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit('')  # 空一行
         self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')  # 空一行
         self.sig_end.emit('完成上报任务，返回主界面！')
+
+
+class DDDReportByUI(DDDReport, QObject):
+    ddd_drug_sig = pyqtSignal(dict)
+    ddd_progress_sig = pyqtSignal(str)
+    ddd_update_sig = pyqtSignal(str)
+    start_record_sig = pyqtSignal(str)
+    isPause = False
+    ddd_drug_name = ''
+    start_record = None
+
+    def __init__(self, ddd_data):
+        web_driver = webdriver.Chrome()  # 启动浏览器
+        wait_time = 60  # 等待网页相应时间
+        web_driver.implicitly_wait(wait_time)  # 隐式等待
+        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
+        login(web_driver=web_driver)
+
+        self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
+        # 等待UI传参
+        while self.start_record is None:
+            time.sleep(0.01)
+
+        DDDReport.__init__(self, ddd_data=ddd_data, record_completed=self.start_record, web_driver=web_driver,
+                           wait=wait)
+        QObject.__init__(self)
+
+    def input_drug_name(self, one_drug_info):
+        # 输入抗菌药名称
+        self.web_driver.find_element(By.ID, 'medicineName').click()
+        drug_name = one_drug_info.get('drug_name')
+        self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+        if drug_name in self.ddd_drug_dict:
+            self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
+        else:
+            self.ddd_update_sig.emit(f'{drug_name}')  # 发送信号：输入药品名称
+            self.isPause = True
+            print('暂停上报，等待更新药品字典')
+            while True:
+                if self.isPause:
+                    time.sleep(0.1)
+                    continue
+                else:
+                    # 增加一条，更新字典
+                    self.ddd_drug_dict[drug_name] = self.ddd_drug_name
+                    DDDReportByUI.update_ddd_drug_dict(self.ddd_drug_dict)
+                    break
+
+        print('请选择相应的药品！右键继续……')
+        while True:
+            time.sleep(0.001)
+            if win32api.GetKeyState(0x02) < 0:
+                # up = 0 or 1, down = -127 or -128
+                break
+        return f"输入药品名称：{drug_name}"
+
+    def do_report(self):
+        # 遍历剩余信息
+        for one_info in self.ddd_data[self.start_record:]:
+            self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
+            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
+            self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
+            self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
+            self.ddd_progress_sig.emit(self.save_data())  # 发送信号：输入药品金额
+            self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
+
+            self.start_record += 1
+            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit('')  # 空一行
+        self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
+        # self.finished_sig.emit()
+
+
+class DDDReportThread(QThread):
+    def __init__(self, ddd_data):
+        super().__init__()
+        self.ddd_data = ddd_data
+
+    def run(self):
+        # self.ddd_report_by_ui = DDDReportByUI(self.ddd_data)
+        # self.ddd_report_by_ui.do_report()
+        DDDReportByUI(self.ddd_data).do_report()
 
 
 class MyWindow(QMainWindow, Ui_MainWindow):
@@ -308,17 +318,16 @@ class MyWindow(QMainWindow, Ui_MainWindow):
         self.tableView.setEditTriggers(QTableView.NoEditTriggers)  # 不可编辑
 
         # 开启新进程进行DDD上报
-        self.thread = QThread()
-        self.ddd_report = DDDReportByUI(ddd_data=ddd_data)
-        self.ddd_report.moveToThread(self.thread)
+        self.thread = DDDReportThread(ddd_data)
 
         # 连接信号槽：btn_ok开启进程工作，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
         self.btn_ok.clicked.connect(self.thread.start)
-        self.thread.started.connect(self.ddd_report.do_report)
-        self.ddd_report.start_record_sig.connect(self.set_ddd_start_record)
-        self.ddd_report.ddd_drug_sig.connect(self.ddd_display)
-        self.ddd_report.ddd_progress_sig.connect(lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))
-        self.ddd_report.ddd_update_sig.connect(self.update_ddd_drug_name)
+        # fixme 如果在init方法中实例化DDDReportByUI则主界面会卡死，如果在run方法中实例化，则无法连接槽函数。
+        # self.thread.started.connect(self.ddd_report.do_report)
+        # DDDReportByUI.start_record_sig.connect(self.set_ddd_start_record)
+        # DDDReportByUI.ddd_drug_sig.connect(self.ddd_display)
+        # DDDReportByUI.ddd_progress_sig.connect(lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))
+        # DDDReportByUI.ddd_update_sig.connect(self.update_ddd_drug_name)
 
     def presc_display(self, presc_sig):  # 这里是接收信号
         # 将处方信息显示在UI上面
