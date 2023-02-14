@@ -118,9 +118,9 @@ class DDDReportByUI(DDDReport, QObject):
             self.ddd_progress_sig.emit(DDDReportByUI.input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(DDDReportByUI.input_drug_money(one_info))  # 发送信号：输入药品金额
             time.sleep(0.2)
-            mouse_click(rf"{res_path}/image/ddd_image/save.png")
+            # mouse_click(rf"{res_path}/image/ddd_image/save.png")
             time.sleep(0.3)
-            mouse_click(rf"{res_path}/image/ddd_image/enter.png")
+            # mouse_click(rf"{res_path}/image/ddd_image/enter.png")
             self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
 
             self.start_record += 1
@@ -146,21 +146,21 @@ class PrescriptionReportThread(QThread):
         # 获取科室字典和抗菌药物字典
         dep_dict = Prescription.get_dep_dict()
         ddd_drug_dict = DDDReport.get_ddd_drug_dict()
-        # driver = webdriver.Chrome()  # 启动浏览器
-        # wait_time = 60  # 等待网页相应时间
-        # driver.implicitly_wait(wait_time)  # 隐式等待
-        # wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
-        login()
+        web_driver = webdriver.Chrome()  # 启动浏览器
+        wait_time = 60  # 等待网页相应时间
+        web_driver.implicitly_wait(wait_time)  # 隐式等待
+        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
+        login(web_driver=web_driver, wait=wait)
 
         # 遍历剩余处方信息
         for one_presc in self.data[self.record_completed:]:
             self.presc_sig.emit(one_presc)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, webdriver)
+                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, web_driver, wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict)
+                report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict, web_driver, wait)
 
             self.prescription_progress_sig.emit(
                 '—' * 5 + f"开始填报第{self.record_completed + 1}条记录！" + '—' * 5)  # 发送信号：进度信息
