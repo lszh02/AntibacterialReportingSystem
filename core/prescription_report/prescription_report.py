@@ -16,24 +16,33 @@ current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 
-def login(web_driver, wait, url="http://y.chinadtc.org.cn/login", account='440306311001',
-          pwd='NYDyjk233***', mode=1):
+def login(web_driver, url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***'):
     web_driver.get(url)  # 打开网址
     web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
     web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
     web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
     web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
     web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+    print('请手动选择时间和上报模块！完成后单击右键继续……')
+    while True:
+        time.sleep(0.001)
+        if win32api.GetKeyState(0x02) < 0:
+            # up = 0 or 1, down = -127 or -128
+            break
 
-    web_driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-    wait.until(ec.alert_is_present())
-    web_driver.switch_to.alert.accept()
-
-    web_driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-    if mode == 1:
-        web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
-    elif mode == 2:
-        web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
+    # web_driver.find_element(By.ID, 'report').click()  # 单击登录
+    # # 选择时间
+    # web_driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
+    # wait.until(ec.alert_is_present())
+    # web_driver.switch_to.alert.accept()
+    #
+    # web_driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
+    # if mode == 1:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
+    # elif mode == 2:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
+    # elif mode == 3:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/kjyxh/"]').click()  # 单击"抗菌药物消耗情况录入"
 
 
 class PrescriptionReport:
@@ -179,7 +188,8 @@ class PrescriptionReport:
             try:
                 # fixme 此处输入诊断点击查询后，网页可能还没加载出“网络诊断”的所有内容，比如web_diagnosis尚无text属性，无法进行匹配判断而报错。
                 time.sleep(0.3)
-                # self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))
+                # self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml
+                # a")))
                 web_diagnosis_list = self.web_driver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
                 # 自动录入诊断可能无响应，此处获取手动修改后的输入诊断
                 diagnosis_change = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
@@ -205,7 +215,7 @@ class PrescriptionReport:
             drug_name = one_drug_info.get('drug_name')
             if drug_name in self.ddd_drug_dict:
                 self.web_driver.find_element(By.CSS_SELECTOR,
-                                            '#outpatientTable tr:nth-child(2) div:nth-child(2)').click()  # 单击“有”
+                                             '#outpatientTable tr:nth-child(2) div:nth-child(2)').click()  # 单击“有”
                 self.web_driver.find_element(By.CSS_SELECTOR, '#outpatientTable input[value="录入详细信息"]').click()  # 单击录入
                 self.input_antibacterial(drug_list)
                 break
@@ -325,12 +335,12 @@ class JzPrescriptionReport(PrescriptionReport):
 
 
 if __name__ == '__main__':
-    # driver = webdriver.Chrome()  # 启动浏览器
-    # wait_time = 60  # 等待网页相应时间
-    # driver.implicitly_wait(wait_time)  # 隐式等待
-    # wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
+    driver = webdriver.Chrome()  # 启动浏览器
+    wait_time = 60  # 等待网页相应时间
+    driver.implicitly_wait(wait_time)  # 隐式等待
+    wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-    login(driver, wait)
+    login(driver)
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
     excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
     file_name = r'门诊处方点评（100张）-20221216上午.xls'
@@ -345,6 +355,6 @@ if __name__ == '__main__':
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))
     for one_presc in presc_data[record_completed:]:
-        r = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver)
+        r = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver, wait)
         r.do_report()
     input('录入完成！确认输入Yes')

@@ -12,6 +12,7 @@ from PyQt5.QtGui import QIcon, QStandardItemModel
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox, QLineEdit, QWidget, QHeaderView, \
     QAbstractItemView, QTableView
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
 from core.ddd_report.ddd_report import DDDData, DDDReport
@@ -68,22 +69,23 @@ class DDDReportByUI(DDDReport, QObject):
     start_record = None
 
     def __init__(self, ddd_data):
-        DDDReport.__init__(self, ddd_data, None)
+        web_driver = webdriver.Chrome()  # 启动浏览器
+        wait_time = 60  # 等待网页相应时间
+        web_driver.implicitly_wait(wait_time)  # 隐式等待
+        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
+        login(web_driver=web_driver)
+
+        DDDReport.__init__(self, ddd_data=ddd_data, web_driver=web_driver, wait=wait)
         QObject.__init__(self)
 
     def input_drug_name(self, one_drug_info):
-        mouse_click(rf"{res_path}/image/ddd_image/drug_name.png")
-        mouse_click(rf"{res_path}/image/ddd_image/input_box.png")
-
+        # 输入抗菌药名称
+        self.web_driver.find_element(By.ID, 'medicineName').click()
         drug_name = one_drug_info.get('drug_name')
+        self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
         if drug_name in self.ddd_drug_dict:
-            pyperclip.copy(self.ddd_drug_dict.get(drug_name))
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/ddd_image/search.png")
+            self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
-            pyperclip.copy(drug_name)
-            pyautogui.hotkey('ctrl', 'v')
-            # mouse_click(rf"{res_path}/image/ddd_image/search.png")
             self.ddd_update_sig.emit(f'{drug_name}')  # 发送信号：输入药品名称
             self.isPause = True
             print('暂停上报，等待更新药品字典')
@@ -92,11 +94,12 @@ class DDDReportByUI(DDDReport, QObject):
                     time.sleep(0.1)
                     continue
                 else:
-                    print('更新药品字典')
+                    # 增加一条，更新字典
                     self.ddd_drug_dict[drug_name] = self.ddd_drug_name
                     DDDReportByUI.update_ddd_drug_dict(self.ddd_drug_dict)
                     break
 
+        print('请选择相应的药品！右键继续……')
         while True:
             time.sleep(0.001)
             if win32api.GetKeyState(0x02) < 0:
@@ -115,12 +118,9 @@ class DDDReportByUI(DDDReport, QObject):
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
             self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
-            self.ddd_progress_sig.emit(DDDReportByUI.input_drug_count(one_info))  # 发送信号：输入药品数量
-            self.ddd_progress_sig.emit(DDDReportByUI.input_drug_money(one_info))  # 发送信号：输入药品金额
-            time.sleep(0.2)
-            # mouse_click(rf"{res_path}/image/ddd_image/save.png")
-            time.sleep(0.3)
-            # mouse_click(rf"{res_path}/image/ddd_image/enter.png")
+            self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
+            self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
+            self.ddd_progress_sig.emit(self.save_data())  # 发送信号：输入药品金额
             self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
 
             self.start_record += 1
@@ -146,11 +146,12 @@ class PrescriptionReportThread(QThread):
         # 获取科室字典和抗菌药物字典
         dep_dict = Prescription.get_dep_dict()
         ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+
         web_driver = webdriver.Chrome()  # 启动浏览器
         wait_time = 60  # 等待网页相应时间
         web_driver.implicitly_wait(wait_time)  # 隐式等待
         wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
-        login(web_driver=web_driver, wait=wait)
+        login(web_driver=web_driver)
 
         # 遍历剩余处方信息
         for one_presc in self.data[self.record_completed:]:
@@ -308,7 +309,7 @@ class MyWindow(QMainWindow, Ui_MainWindow):
 
         # 开启新进程进行DDD上报
         self.thread = QThread()
-        self.ddd_report = DDDReportByUI(ddd_data)
+        self.ddd_report = DDDReportByUI(ddd_data=ddd_data)
         self.ddd_report.moveToThread(self.thread)
 
         # 连接信号槽：btn_ok开启进程工作，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。

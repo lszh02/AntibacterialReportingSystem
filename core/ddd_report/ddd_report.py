@@ -7,24 +7,14 @@ import pyautogui
 import time
 import pyperclip
 import win32api
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ec
 
 from db.database import read_excel
 
 current_path = os.path.dirname(__file__)
 db_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'db')
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
-
-
-def mouse_click(img, click_times=1, l_or_r="left"):
-    # 定义鼠标事件
-    # pyautogui库其他用法 https://blog.csdn.net/qingfengxd1/article/details/108270159
-    while True:
-        location = pyautogui.locateCenterOnScreen(img, confidence=0.9)
-        if location is not None:
-            pyautogui.click(location.x, location.y, clicks=click_times, interval=0.2, duration=0.2, button=l_or_r)
-            break
-        print("未找到匹配图片,0.5秒后重试")
-        time.sleep(0.5)
 
 
 class DDDData:
@@ -57,10 +47,12 @@ class DDDData:
 
 
 class DDDReport:
-    def __init__(self, ddd_data, record_completed):
+    def __init__(self, ddd_data, record_completed, web_driver, wait):
         self.ddd_data = ddd_data
         self.ddd_drug_dict = DDDReport.get_ddd_drug_dict()
         self.record_completed = record_completed
+        self.web_driver = web_driver
+        self.wait = wait
 
     @staticmethod
     def get_ddd_drug_dict():
@@ -87,37 +79,31 @@ class DDDReport:
             self.input_drug_name(one_info)
 
             # 输入药品数量
-            DDDReport.input_drug_count(one_info)
+            self.input_drug_count(one_info)
 
             # 输入药品金额
-            DDDReport.input_drug_money(one_info)
+            self.input_drug_money(one_info)
 
             # 保存数据
-            mouse_click(rf"{res_path}/image/ddd_image/save.png")
-            time.sleep(0.3)
-            mouse_click(rf"{res_path}/image/ddd_image/enter.png")
-            print("保存数据")
+            self.save_data()
+
             self.record_completed += 1
 
     def input_drug_name(self, one_drug_info):
-        mouse_click(rf"{res_path}/image/ddd_image/drug_name.png")
-        mouse_click(rf"{res_path}/image/ddd_image/input_box.png")
-
+        # 输入抗菌药名称
+        self.web_driver.find_element(By.ID, 'medicineName').click()
         drug_name = one_drug_info.get('drug_name')
         if drug_name in self.ddd_drug_dict:
-            pyperclip.copy(self.ddd_drug_dict.get(drug_name))
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/ddd_image/search.png")
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+            self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
-            pyperclip.copy(drug_name)
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/ddd_image/search.png")
             print(f'该药品规格为：{one_drug_info.get("specifications")}')
             value = input(f'请输入{drug_name}在上报系统中的名字——>')
             # 增加一条，更新字典
             self.ddd_drug_dict[drug_name] = value
             DDDReport.update_ddd_drug_dict(self.ddd_drug_dict)
 
+        print('请选择相应的药品！右键继续……')
         while True:
             time.sleep(0.001)
             if win32api.GetKeyState(0x02) < 0:
@@ -125,20 +111,19 @@ class DDDReport:
                 break
         return f"输入药品名称：{drug_name}"
 
-    @staticmethod
-    def input_drug_count(one_drug_info):
-        mouse_click(rf"{res_path}/image/ddd_image/drugs_count.png")
-        quantity = one_drug_info.get('quantity')
-        pyperclip.copy(quantity)
-        pyautogui.hotkey('ctrl', 'v')
-        print("输入药品总数:", quantity)
-        return f"输入药品数量：{quantity}"
+    def input_drug_count(self, one_drug_info):
+        self.web_driver.find_element(By.ID, 'medicineNums').send_keys(one_drug_info.get('quantity'))
+        print("输入药品总数:", one_drug_info.get('quantity'))
+        return f"输入药品数量：{one_drug_info.get('quantity')}"
 
-    @staticmethod
-    def input_drug_money(one_drug_info):
-        mouse_click(rf"{res_path}/image/ddd_image/drugs_money.png")
-        money = one_drug_info.get('money')
-        pyperclip.copy(round(money, 2))
-        pyautogui.hotkey('ctrl', 'v')
-        print("输入药品金额:", money)
-        return f"输入药品金额：{money}"
+    def input_drug_money(self, one_drug_info):
+        self.web_driver.find_element(By.ID, 'totalMoney').send_keys(round(one_drug_info.get('money'), 2))
+        print("输入药品金额:", round(one_drug_info.get('money'), 2))
+        return f"输入药品金额：{round(one_drug_info.get('money'), 2)}"
+
+    def save_data(self):
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存季度住院病人抗菌药物使用情况调查表"]').click()  # 单击保存
+        self.wait.until(ec.alert_is_present())
+        self.web_driver.switch_to.alert.accept()
+        print("保存数据")
+        return "保存数据"
