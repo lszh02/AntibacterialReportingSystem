@@ -199,6 +199,13 @@ class PrescriptionReport:
                         web_diagnosis.click()
                         print(f'输入诊断：{diagnosis}')
                         break
+                else:
+                    print('无匹配诊断，请手动输入！完成后单击右键继续……')
+                    while True:
+                        time.sleep(0.001)
+                        if win32api.GetKeyState(0x02) < 0:
+                            # up = 0 or 1, down = -127 or -128
+                            break
             except Exception as e:
                 print(f'输入诊断出错！错误信息为：{e}')
                 print('请手动输入！完成后单击右键继续……')
