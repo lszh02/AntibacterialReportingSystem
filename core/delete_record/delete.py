@@ -1,5 +1,7 @@
 import os
+import time
 
+import win32api
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -7,29 +9,23 @@ from selenium.webdriver.support import expected_conditions as ec
 
 current_path = os.path.dirname(__file__)
 
-driver = webdriver.Chrome()  # 启动浏览器
-wait_time = 60  # 等待网页相应时间
-driver.implicitly_wait(wait_time)  # 隐式等待
-wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
+
+def login(web_driver, url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***'):
+    web_driver.get(url)  # 打开网址
+    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
+    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+    print('请手动选择时间和上报模块！完成后单击右键继续……')
+    while True:
+        time.sleep(0.001)
+        if win32api.GetKeyState(0x02) < 0:
+            # up = 0 or 1, down = -127 or -128
+            break
 
 
-def longin(url="http://y.chinadtc.org.cn/login", account='', pwd=''):
-    driver.get(url)  # 打开网址
-    driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-    driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
-    driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-    driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-
-    driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-    wait.until(ec.alert_is_present())
-    driver.switch_to.alert.accept()
-
-    driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-    driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
-
-
-def delete_record(del_num, web_driver=driver):
+def delete_record(del_num, web_driver):
     for i in range(del_num):
         if i > 0 and i % 100 == 0:
             # 每删除100条记录需点击“下一页”
@@ -50,8 +46,13 @@ def delete_record(del_num, web_driver=driver):
 
 
 if __name__ == '__main__':
-    longin()
+    web_driver = webdriver.Chrome()  # 启动浏览器
+    wait_time = 60  # 等待网页相应时间
+    web_driver.implicitly_wait(wait_time)  # 隐式等待
+    wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
+
+    login(web_driver)
     del_num = input('需要删除多少条记录？————>')
-    delete_record(int(del_num))
+    delete_record(int(del_num), web_driver)
     input('完成删除！确认输入Yes')
 
