@@ -101,30 +101,17 @@ class DDDReport:
             self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
             self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
-            print(f'该药品规格为：{one_drug_info.get("specifications")}')
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(drug_name)
+            self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
+            print(f'该药品规格为：{drug_specification}')
             value = input(f'请输入{drug_name}在上报系统中的名字——>')
             # 增加一条，更新字典
             self.ddd_drug_dict[drug_name] = value
             DDDReport.update_ddd_drug_dict(self.ddd_drug_dict)
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
-        # fixme Message: stale element reference: element is not attached to the page document
-        web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
-        for one_row in web_drug_rows:
-            one_row_name = one_row.find_element(By.CSS_SELECTOR,
-                                                "#ceng-drug table td:nth-child(2)").text  # 药品网络名称
-            one_row_spec = one_row.find_element(By.CSS_SELECTOR,
-                                                "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
-            if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[0] == one_row_spec:
-                one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
-                break
-        else:
-            print('请选择相应的药品！右键继续……')
-            while True:
-                time.sleep(0.001)
-                if win32api.GetKeyState(0x02) < 0:
-                    # up = 0 or 1, down = -127 or -128
-                    break
+        self.matching_drugs(drug_name, drug_specification)
+        print(f"输入药品名称：{drug_name}")
         return f"输入药品名称：{drug_name}"
 
     def input_drug_count(self, one_drug_info):
@@ -143,6 +130,26 @@ class DDDReport:
         self.web_driver.switch_to.alert.accept()
         print("保存数据")
         return "保存数据"
+
+    def matching_drugs(self, drug_name, drug_specification):
+        web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
+        for one_row in web_drug_rows:
+            one_row_name = one_row.find_element(By.CSS_SELECTOR,
+                                                "#ceng-drug table td:nth-child(2)").text  # 药品网络名称
+            # fixme Message: stale element reference: element is not attached to the page document
+            one_row_spec = one_row.find_element(By.CSS_SELECTOR,
+                                                "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
+            if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[0] == one_row_spec:
+                one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                break
+        else:
+            print('请选择相应的药品！右键继续……')
+            while True:
+                time.sleep(0.001)
+                if win32api.GetKeyState(0x02) < 0:
+                    # up = 0 or 1, down = -127 or -128
+                    break
+        return f"输入药品名称：{drug_name}"
 
 
 if __name__ == '__main__':
