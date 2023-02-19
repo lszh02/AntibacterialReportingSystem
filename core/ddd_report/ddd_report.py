@@ -133,14 +133,20 @@ class DDDReport:
 
     def matching_drugs(self, drug_name, drug_specification):
         web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
-        for one_row in web_drug_rows:
-            one_row_name = one_row.find_element(By.CSS_SELECTOR,
-                                                "#ceng-drug table td:nth-child(2)").text  # 药品网络名称
+        for i in range(len(web_drug_rows)):
+            # time.sleep(0.5)
             # fixme Message: stale element reference: element is not attached to the page document
-            one_row_spec = one_row.find_element(By.CSS_SELECTOR,
-                                                "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
+            self.wait.until(
+                ec.presence_of_all_elements_located((By.CSS_SELECTOR, f"#ceng-drug table tr:nth-child({i + 1})")))
+
+            one_row_name = self.web_driver.find_element(By.CSS_SELECTOR,
+                                                        f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(2)").text  # 药品网络名称
+            # time.sleep(0.5)
+            one_row_spec = self.web_driver.find_element(By.CSS_SELECTOR,
+                                                        f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(3)").text  # 药品网络规格
             if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[0] == one_row_spec:
-                one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                self.web_driver.find_element(By.CSS_SELECTOR,
+                                             f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
                 break
         else:
             print('请选择相应的药品！右键继续……')
