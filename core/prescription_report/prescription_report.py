@@ -104,24 +104,28 @@ class PrescriptionReport:
         if '岁' in age:
             age = age.split('岁')[0]
             age_sel.select_by_visible_text('岁')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, "age").send_keys(age)
             print(f'输入年龄:{age}岁')
             return f'输入年龄:{age}岁'
         elif '月' in age:
             age = age.split('月')[0]
             age_sel.select_by_visible_text('月')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, "age").send_keys(age)
             print(f'输入年龄:{age}月')
             return f'输入年龄:{age}月'
         elif '周' in age:
             age = age.split('周')[0]
             age_sel.select_by_visible_text('周')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, "age").send_keys(age)
             print(f'输入年龄:{age}周')
             return f'输入年龄:{age}周'
         elif '天' in age:
             age = age.split('天')[0]
             age_sel.select_by_visible_text('天')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, "age").send_keys(age)
             print(f'输入年龄:{age}天')
             return f'输入年龄:{age}天'
@@ -139,9 +143,9 @@ class PrescriptionReport:
 
     def input_total_money(self):
         money = self.prescription_info.get("total_money")
-        if money <= 10000:
-            self.web_driver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
-        else:
+        self.web_driver.find_element(By.ID, 'outAmount').clear()  # 清除输入框数据
+        self.web_driver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
+        if money > 10000:
             self.wait.until(ec.alert_is_present())
             self.web_driver.switch_to.alert.accept()
 
@@ -150,6 +154,7 @@ class PrescriptionReport:
 
     def input_quantity_of_drugs(self):
         drugs_count = len(self.prescription_info.get("drug_info"))
+        self.web_driver.find_element(By.ID, 'outDrugs').clear()  # 清除输入框数据
         self.web_driver.find_element(By.ID, 'outDrugs').send_keys(drugs_count)
         print(f'输入药品数量:{drugs_count}')
         return f'输入药品数量:{drugs_count}'
@@ -163,6 +168,7 @@ class PrescriptionReport:
                     break
         if inj_count != 0:
             self.web_driver.find_element(By.ID, 'infusionY').click()
+            self.web_driver.find_element(By.ID, 'infusionNum').clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, 'infusionNum').send_keys(inj_count)
             print(f'输入注射剂数量:{inj_count}')
             return f'输入注射剂数量:{inj_count}'
@@ -243,7 +249,8 @@ class PrescriptionReport:
                 self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
                 # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
-                web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
+                web_drug_rows = self.wait.until(
+                    ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-drug table tr")))  # 每一行
                 one_row_unit = ''
                 for one_row in web_drug_rows:
                     one_row_name = one_row.find_element(By.CSS_SELECTOR,

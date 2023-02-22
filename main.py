@@ -222,7 +222,7 @@ class MyWindow(QMainWindow, Ui_MainWindow):
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
-        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\药事\抗菌药物监测\2022年", "全部文件(*.*)")
+        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\药事\抗菌药物监测\2023年", "全部文件(*.*)")
         if filename != "":
             self.file_path_text.setText(filename)
 
