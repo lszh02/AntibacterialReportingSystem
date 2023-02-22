@@ -192,11 +192,8 @@ class PrescriptionReport:
 
             # 获取网络诊断列表，与输入的诊断进行匹配
             try:
-                # fixme 此处输入诊断点击查询后，网页可能还没加载出“网络诊断”的所有内容，比如web_diagnosis尚无text属性，无法进行匹配判断而报错。
-                time.sleep(0.3)
-                # self.wait.until(ec.presence_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml
-                # a")))
-                web_diagnosis_list = self.web_driver.find_elements(By.CSS_SELECTOR, '#ceng-diag table .nameHtml a')
+                web_diagnosis_list = self.wait.until(
+                    ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))  # 每一行
                 # 自动录入诊断可能无响应，此处获取手动修改后的输入诊断
                 diagnosis_change = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 for web_diagnosis in web_diagnosis_list:
