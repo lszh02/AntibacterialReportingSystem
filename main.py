@@ -17,6 +17,7 @@ from core.ddd_report.ddd_report import DDDData, DDDReport
 from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport, login
 from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
+from res.UI.LoginWindow import Ui_LoginWindow
 
 current_path = os.path.dirname(__file__)
 res_path = os.path.join(current_path, 'res')
@@ -367,9 +368,61 @@ class MyWindow(QMainWindow, Ui_MainWindow):
         self.ddd_report.start_record = self.tableView.currentIndex().row()  # 取得当前选中行的index
 
 
+class LoginWindow(QMainWindow, Ui_LoginWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.btn_login.clicked.connect(self.check_login)
+
+    def check_login(self):
+        username = self.username.text()
+        password = self.password.text()
+        if self.username.text() == 'admin' and self.password.text() == '123456':
+            self.hide()
+            self.main_window = MyWindow()
+            self.main_window.show()
+
+            self.driver = webdriver.Chrome()  # 启动浏览器
+            self.wait_time = 60  # 等待网页相应时间
+            self.driver.implicitly_wait(self.wait_time)  # 隐式等待
+            self.wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
+            self.login(self.driver, account=username, pwd=password)
+        else:
+            QMessageBox.warning(self, 'Warning', '登陆失败!')
+
+
+def login(web_driver, url="http://y.chinadtc.org.cn/login", account=None, pwd=None):
+    web_driver.get(url)  # 打开网址
+    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
+    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+    print('请手动选择时间和上报模块！完成后单击右键继续……')
+    while True:
+        time.sleep(0.001)
+        if win32api.GetKeyState(0x02) < 0:
+            # up = 0 or 1, down = -127 or -128
+            break
+
+    # web_driver.find_element(By.ID, 'report').click()  # 单击登录
+    # # 选择时间
+    # web_driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
+    # wait.until(ec.alert_is_present())
+    # web_driver.switch_to.alert.accept()
+    #
+    # web_driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
+    # if mode == 1:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
+    # elif mode == 2:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
+    # elif mode == 3:
+    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/kjyxh/"]').click()  # 单击"抗菌药物消耗情况录入"
+
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    ui = MyWindow()
+    ui = LoginWindow()
     ui.setWindowIcon(QIcon('res/UI/drug.png'))
     ui.show()
     sys.exit(app.exec_())
