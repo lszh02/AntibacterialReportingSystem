@@ -372,52 +372,71 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.btn_login.clicked.connect(self.check_login)
+        self.btn_login.clicked.connect(self.login)
 
-    def check_login(self):
+        # Load saved login info if available
+        if os.path.exists('login_info.txt'):
+            with open('login_info.txt', 'r') as f:
+                lines = f.readlines()
+                self.username.setText(lines[0].strip())
+                self.password.setText(lines[1].strip())
+
+    def login(self):
+        # Get username and password
         username = self.username.text()
         password = self.password.text()
-        if self.username.text() == 'admin' and self.password.text() == '123456':
-            self.hide()
+
+        # Save username and password if remember me is checked
+        if self.remember.isChecked():
+            # Save username and password to file or database
+            with open('login_info.txt', 'w') as f:
+                f.write(username + '\n')
+                f.write(password)
+        else:
+            # Remove saved login info
+            if os.path.exists('login_info.txt'):
+                os.remove('login_info.txt')
+
+        # Start login thread
+        self.login_thread = LoginThread(username, password)
+        self.login_thread.login_signal.connect(self.login_result)
+        self.login_thread.start()
+
+    def login_result(self, success):
+        if success:
+            # Close login window and open main window
+            self.close()
             self.main_window = MyWindow()
             self.main_window.show()
 
-            self.driver = webdriver.Chrome()  # 启动浏览器
-            self.wait_time = 60  # 等待网页相应时间
-            self.driver.implicitly_wait(self.wait_time)  # 隐式等待
-            self.wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
-            self.login(self.driver, account=username, pwd=password)
-        else:
-            QMessageBox.warning(self, 'Warning', '登陆失败!')
 
+class LoginThread(QThread):
+    login_signal = pyqtSignal(bool)
 
-def login(web_driver, url="http://y.chinadtc.org.cn/login", account=None, pwd=None):
-    web_driver.get(url)  # 打开网址
-    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-    print('请手动选择时间和上报模块！完成后单击右键继续……')
-    while True:
-        time.sleep(0.001)
-        if win32api.GetKeyState(0x02) < 0:
-            # up = 0 or 1, down = -127 or -128
-            break
+    def __init__(self, username, password, parent=None):
+        super().__init__(parent)
+        self.username = username
+        self.password = password
 
-    # web_driver.find_element(By.ID, 'report').click()  # 单击登录
-    # # 选择时间
-    # web_driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-    # wait.until(ec.alert_is_present())
-    # web_driver.switch_to.alert.accept()
-    #
-    # web_driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-    # if mode == 1:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
-    # elif mode == 2:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
-    # elif mode == 3:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/kjyxh/"]').click()  # 单击"抗菌药物消耗情况录入"
+    def run(self):
+        # Use selenium to login to website
+        self.login(web_driver=webdriver.Chrome(), url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
+
+    def login(self, web_driver, url=None, account=None, pwd=None):
+        web_driver.get(url)  # 打开网址
+        web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
+        web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
+        web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
+        web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
+        web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+        print('请手动选择时间和上报模块！完成后单击右键继续……')
+        while True:
+            time.sleep(0.001)
+            if win32api.GetKeyState(0x02) < 0:
+                # up = 0 or 1, down = -127 or -128
+                login_success = True  # Placeholder for actual login success
+                self.login_signal.emit(login_success)
+                return web_driver
 
 
 if __name__ == '__main__':
