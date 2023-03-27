@@ -3,7 +3,6 @@ import os
 import sys
 import time
 
-import win32api
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSignal, QThread, QObject
 from PyQt5.QtGui import QIcon, QStandardItemModel
@@ -12,9 +11,10 @@ from PyQt5.QtWidgets import QMainWindow, QFileDialog, QInputDialog, QMessageBox,
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
 
 from core.ddd_report.ddd_report import DDDData, DDDReport
-from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport, login
+from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport
 from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
 from res.UI.LoginWindow import Ui_LoginWindow
@@ -61,53 +61,51 @@ class PrescriptionUpdateDep(Prescription, QWidget):
 class PrescriptionReportThread(QThread):
     # 信号是类变量，必须在类中定义，不能在实例方法中定义，否则后面发射信号和连接槽方法时都会报错。
     presc_sig = pyqtSignal(dict)
-    prescription_progress_sig = pyqtSignal(str)
-    sig_end = pyqtSignal(str)
+    presc_progress_sig = pyqtSignal(str)
+    presc_end_sig = pyqtSignal(str)
 
-    def __init__(self, data_type, data, record_completed):
-        super(PrescriptionReportThread, self).__init__()
+    def __init__(self, data_type, data, record_completed, web_driver, wait):
+        super().__init__()
         self.data_type = data_type
         self.data = data
         self.record_completed = record_completed
+        self.web_driver = web_driver
+        self.wait = wait
 
     def run(self):
         # 获取科室字典和抗菌药物字典
         dep_dict = Prescription.get_dep_dict()
         ddd_drug_dict = DDDReport.get_ddd_drug_dict()
 
-        web_driver = webdriver.Chrome()  # 启动浏览器
-        wait_time = 60  # 等待网页相应时间
-        web_driver.implicitly_wait(wait_time)  # 隐式等待
-        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
-        login(web_driver=web_driver)
-
         # 遍历剩余处方信息
         for one_presc in self.data[self.record_completed:]:
             self.presc_sig.emit(one_presc)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, web_driver, wait)
+                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict, web_driver, wait)
+                report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
 
-            self.prescription_progress_sig.emit(
+            self.presc_progress_sig.emit(
                 '—' * 5 + f"开始填报第{self.record_completed + 1}条记录！" + '—' * 5)  # 发送信号：进度信息
-            self.prescription_progress_sig.emit(report.input_department_name())  # 发送信号：选择科室
-            self.prescription_progress_sig.emit(report.input_age())  # 发送信号：输入年龄
-            self.prescription_progress_sig.emit(report.input_gender())  # 发送信号：选择性别
-            self.prescription_progress_sig.emit(report.input_total_money())  # 发送信号：输入处方金额
-            self.prescription_progress_sig.emit(report.input_quantity_of_drugs())  # 发送信号：输入药品总数
-            self.prescription_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
-            self.prescription_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
-            self.prescription_progress_sig.emit(report.save_data())  # 发送信号：保存数据
-            self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
+            self.presc_progress_sig.emit(report.input_department_name())  # 发送信号：选择科室
+            self.presc_progress_sig.emit(report.input_age())  # 发送信号：输入年龄
+            self.presc_progress_sig.emit(report.input_gender())  # 发送信号：选择性别
+            self.presc_progress_sig.emit(report.input_total_money())  # 发送信号：输入处方金额
+            self.presc_progress_sig.emit(report.input_quantity_of_drugs())  # 发送信号：输入药品总数
+            self.presc_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
+            self.presc_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
+            self.presc_progress_sig.emit(report.save_data())  # 发送信号：保存数据
+            self.presc_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
-            self.prescription_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
-            self.prescription_progress_sig.emit('')  # 空一行
-        self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')  # 空一行
-        self.sig_end.emit('完成上报任务，返回主界面！')
+            self.presc_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
+            self.presc_progress_sig.emit('')  # 空一行
+        self.presc_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
+        self.presc_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
+        time.sleep(10)
+        self.presc_end_sig.emit('完成上报任务，返回主界面！')
 
 
 class DDDReportByUI(DDDReport, QObject):
@@ -119,19 +117,13 @@ class DDDReportByUI(DDDReport, QObject):
     ddd_drug_name = ''
     start_record = None
 
-    def __init__(self, ddd_data):
-        web_driver = webdriver.Chrome()  # 启动浏览器
-        wait_time = 60  # 等待网页相应时间
-        web_driver.implicitly_wait(wait_time)  # 隐式等待
-        wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
-
-        DDDReport.__init__(self, ddd_data, None, web_driver, wait)
+    def __init__(self, ddd_data, driver, driver_wait):
+        self.driver = driver
+        self.driver_wait = driver_wait
+        DDDReport.__init__(self, ddd_data, None, self.web_driver, self.wait)
         QObject.__init__(self)
 
     def do_report(self):
-        # 登陆
-        login(self.web_driver)
-
         # 等待UI传参
         self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
         while self.start_record is None:
@@ -184,9 +176,11 @@ class DDDReportByUI(DDDReport, QObject):
         return f"输入药品名称：{drug_name}"
 
 
-class MyWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow, Ui_MainWindow):
+    def __init__(self, driver, driver_wait):
         super().__init__()
+        self.driver = driver
+        self.driver_wait = driver_wait
         self.setupUi(self)
         self.stackedWidget.setCurrentIndex(0)
         self.file_btn.clicked.connect(self.file_choose)
@@ -301,9 +295,11 @@ class MyWindow(QMainWindow, Ui_MainWindow):
             record_completed, ok = QInputDialog.getInt(self, "是否断点续录", "请输入已录入记录条数:", 0, 0, 10000, 1)
 
             # 开启新进程调用上报程序
-            self.report_thread = PrescriptionReportThread(data_type, presc_data, record_completed)
+            self.report_thread = PrescriptionReportThread(data_type, presc_data, record_completed, self.driver,
+                                                          self.driver_wait)
             self.report_thread.presc_sig.connect(self.presc_display)  # 连接信号槽，在UI上显示处方信息
-            self.report_thread.prescription_progress_sig.connect(
+            self.report_thread.presc_end_sig.connect(self.presc_report_end)  # 连接信号槽，处方上报结束，返回主界面
+            self.report_thread.presc_progress_sig.connect(
                 lambda progress_sig: self.progress.append(progress_sig))  # 连接信号槽,在UI上显示进度
             self.report_thread.start()
 
@@ -367,28 +363,32 @@ class MyWindow(QMainWindow, Ui_MainWindow):
     def set_ddd_start_record(self):
         self.ddd_report.start_record = self.tableView.currentIndex().row()  # 取得当前选中行的index
 
+    def presc_report_end(self):
+        self.stackedWidget.setCurrentIndex(0)
+
 
 class LoginWindow(QMainWindow, Ui_LoginWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.btn_login.clicked.connect(self.login)
+        self.login_button.clicked.connect(self.login)
 
         # Load saved login info if available
         if os.path.exists('login_info.txt'):
             with open('login_info.txt', 'r') as f:
                 lines = f.readlines()
-                self.username.setText(lines[0].strip())
-                self.password.setText(lines[1].strip())
+                self.username_input.setText(lines[0].strip())
+                self.password_input.setText(lines[1].strip())
 
     def login(self):
         # Get username and password
-        username = self.username.text()
-        password = self.password.text()
+        username = self.username_input.text()
+        password = self.password_input.text()
+        self.login_button.setEnabled(False)
+        self.login_button.setText("登录中……")
 
         # Save username and password if remember me is checked
-        if self.remember.isChecked():
-            # Save username and password to file or database
+        if self.remember_checkbox.isChecked():
             with open('login_info.txt', 'w') as f:
                 f.write(username + '\n')
                 f.write(password)
@@ -406,21 +406,26 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         if success:
             # Close login window and open main window
             self.close()
-            self.main_window = MyWindow()
+            self.main_window = MainWindow(self.login_thread.driver, self.login_thread.driver_wait)
             self.main_window.show()
 
 
 class LoginThread(QThread):
     login_signal = pyqtSignal(bool)
 
-    def __init__(self, username, password, parent=None):
+    def __init__(self, username, password, wait_time=60, parent=None):
         super().__init__(parent)
         self.username = username
         self.password = password
 
+        self.driver = webdriver.Chrome()
+        self.driver.implicitly_wait(wait_time)  # 隐式等待
+        self.driver_wait = WebDriverWait(self.driver, wait_time, poll_frequency=0.2)  # 显式等待
+
     def run(self):
         # Use selenium to login to website
-        self.login(web_driver=webdriver.Chrome(), url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
+        self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username,
+                   pwd=self.password)
 
     def login(self, web_driver, url=None, account=None, pwd=None):
         web_driver.get(url)  # 打开网址
@@ -429,14 +434,13 @@ class LoginThread(QThread):
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
         web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-        print('请手动选择时间和上报模块！完成后单击右键继续……')
-        while True:
-            time.sleep(0.001)
-            if win32api.GetKeyState(0x02) < 0:
-                # up = 0 or 1, down = -127 or -128
-                login_success = True  # Placeholder for actual login success
-                self.login_signal.emit(login_success)
-                return web_driver
+
+        # 能定位到“退出”按钮即表示登录成功
+        try:
+            self.driver_wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
+            self.login_signal.emit(True)
+        except Exception as e:
+            self.login_signal.emit(False)
 
 
 if __name__ == '__main__':
