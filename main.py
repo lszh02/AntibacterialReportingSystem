@@ -256,9 +256,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.ddd_report = DDDReportByUI(ddd_data, self.driver, self.driver_wait)
             self.ddd_report.moveToThread(self.thread)
 
-            # 连接信号槽：btn_ok开启进程工作，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
-            # self.btn_ok.clicked.connect(self.thread.start)
-            self.thread.started.connect(self.ddd_report.do_report)
+            # 连接信号槽：btn_ok链接DDD上报工作开始，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
+            self.btn_ok.clicked.connect(self.ddd_report.do_report)
+            # self.thread.started.connect(self.ddd_report.do_report)
             self.ddd_report.start_record_sig.connect(self.set_ddd_start_record)
             self.ddd_report.ddd_drug_sig.connect(self.ddd_display)
             self.ddd_report.ddd_progress_sig.connect(
@@ -360,9 +360,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ddd_report.isPause = False
 
     def set_ddd_start_record(self):
-        current_row = self.tableView.currentIndex().row()  # 取得当前选中行的index
-        print('current_row', current_row)
-        self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
+        current_row = self.tableView.currentIndex().row()  # 取得当前选中行的index，不选默认为-1
+        if current_row == -1:
+            QMessageBox.warning(self, "请选择", "未选择开始条目，请点击药品条目后重试！", QMessageBox.Yes | QMessageBox.No,
+                                QMessageBox.Yes)
+        else:
+            self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
 
     def presc_report_end(self):
         self.stackedWidget.setCurrentIndex(0)
