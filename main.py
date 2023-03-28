@@ -19,9 +19,6 @@ from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
 from res.UI.LoginWindow import Ui_LoginWindow
 
-current_path = os.path.dirname(__file__)
-res_path = os.path.join(current_path, 'res')
-
 
 class PrescriptionUpdateDep(Prescription, QWidget):
     def __init__(self, prescription_data_sheet, drug_data_sheet):
@@ -120,8 +117,8 @@ class DDDReportByUI(DDDReport, QObject):
     def __init__(self, ddd_data, driver, driver_wait):
         self.driver = driver
         self.driver_wait = driver_wait
-        DDDReport.__init__(self, ddd_data, None, self.web_driver, self.wait)
         QObject.__init__(self)
+        DDDReport.__init__(self, ddd_data, None, self.driver, self.driver_wait)
 
     def do_report(self):
         # 等待UI传参
@@ -181,8 +178,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.driver = driver
         self.driver_wait = driver_wait
+
         self.setupUi(self)
         self.stackedWidget.setCurrentIndex(0)
+
         self.file_btn.clicked.connect(self.file_choose)
         self.start_btn.clicked.connect(self.start_report)
         self.exit_btn.clicked.connect(lambda: sys.exit())
@@ -217,7 +216,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
-        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\药事\抗菌药物监测\2023年", "全部文件(*.*)")
+        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\抗菌药物监测\2023年", "全部文件(*.*)")
         if filename != "":
             self.file_path_text.setText(filename)
 
@@ -254,7 +253,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # 开启新进程进行DDD上报
             self.thread = QThread()
-            self.ddd_report = DDDReportByUI(ddd_data)
+            self.ddd_report = DDDReportByUI(ddd_data, self.driver, self.driver_wait)
             self.ddd_report.moveToThread(self.thread)
 
             # 连接信号槽：btn_ok开启进程工作，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
@@ -361,7 +360,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ddd_report.isPause = False
 
     def set_ddd_start_record(self):
-        self.ddd_report.start_record = self.tableView.currentIndex().row()  # 取得当前选中行的index
+        current_row = self.tableView.currentIndex().row()  # 取得当前选中行的index
+        print('current_row', current_row)
+        self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
 
     def presc_report_end(self):
         self.stackedWidget.setCurrentIndex(0)
@@ -403,29 +404,42 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         self.login_thread.start()
 
     def login_result(self, success):
+        self.login_button.setEnabled(True)
+        self.login_button.setText("登录")
         if success:
             # Close login window and open main window
             self.close()
             self.main_window = MainWindow(self.login_thread.driver, self.login_thread.driver_wait)
             self.main_window.show()
+        else:
+            reply = QMessageBox.warning(self, "登陆失败", "登陆失败，可能是网络延迟，是否重试？", QMessageBox.Yes | QMessageBox.No,
+                                        QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.login()
+            else:
+                self.close()
 
 
 class LoginThread(QThread):
     login_signal = pyqtSignal(bool)
 
-    def __init__(self, username, password, wait_time=60, parent=None):
+    def __init__(self, username, password, driver=None, wait_time=60, parent=None):
         super().__init__(parent)
         self.username = username
         self.password = password
 
-        self.driver = webdriver.Chrome()
-        self.driver.implicitly_wait(wait_time)  # 隐式等待
-        self.driver_wait = WebDriverWait(self.driver, wait_time, poll_frequency=0.2)  # 显式等待
+        self.driver = driver
+        self.wait_time = wait_time
+        self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
 
     def run(self):
+        if self.driver is None:
+            self.driver = webdriver.Chrome()
+            self.driver.implicitly_wait(self.wait_time)  # 隐式等待
+            self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
+
         # Use selenium to login to website
-        self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username,
-                   pwd=self.password)
+        self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
 
     def login(self, web_driver, url=None, account=None, pwd=None):
         web_driver.get(url)  # 打开网址
@@ -437,7 +451,7 @@ class LoginThread(QThread):
 
         # 能定位到“退出”按钮即表示登录成功
         try:
-            self.driver_wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
+            self.driver_wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
             self.login_signal.emit(True)
         except Exception as e:
             self.login_signal.emit(False)

@@ -19,7 +19,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>登陆</string>
   </property>
   <widget class="QLabel" name="label">
    <property name="geometry">
