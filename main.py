@@ -59,7 +59,7 @@ class PrescriptionReportThread(QThread):
     # 信号是类变量，必须在类中定义，不能在实例方法中定义，否则后面发射信号和连接槽方法时都会报错。
     presc_sig = pyqtSignal(dict)
     presc_progress_sig = pyqtSignal(str)
-    presc_end_sig = pyqtSignal(str)
+    finished_sig = pyqtSignal()
 
     def __init__(self, data_type, data, record_completed, web_driver, wait):
         super().__init__()
@@ -102,14 +102,14 @@ class PrescriptionReportThread(QThread):
         self.presc_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
         self.presc_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
         time.sleep(10)
-        self.presc_end_sig.emit('完成上报任务，返回主界面！')
+        self.finished_sig.emit()
 
 
 class DDDReportByUI(DDDReport, QObject):
     ddd_drug_sig = pyqtSignal(dict)
     ddd_progress_sig = pyqtSignal(str)
     ddd_update_sig = pyqtSignal(str)
-    start_record_sig = pyqtSignal(str)
+    finished_sig = pyqtSignal()
     isPause = False
     ddd_drug_name = ''
     start_record = None
@@ -139,8 +139,8 @@ class DDDReportByUI(DDDReport, QObject):
             self.start_record += 1
             self.ddd_progress_sig.emit(f"—————已填报{self.start_record}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit('')  # 空一行
-        # self.finished_sig.emit()
         self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
+        self.finished_sig.emit()
 
     def input_drug_name(self, one_drug_info):
         drug_name = one_drug_info.get('drug_name')
@@ -174,6 +174,8 @@ class DDDReportByUI(DDDReport, QObject):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
+    start_record_sig = pyqtSignal(int)
+
     def __init__(self, driver, driver_wait):
         super().__init__()
         self.driver = driver
@@ -257,9 +259,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.ddd_report.moveToThread(self.thread)
 
             # 连接信号槽：btn_ok链接DDD上报工作开始，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
-            self.btn_ok.clicked.connect(self.ddd_report.do_report)
-            # self.thread.started.connect(self.ddd_report.do_report)
-            self.ddd_report.start_record_sig.connect(self.set_ddd_start_record)
+            self.btn_ok.clicked.connect(self.check_start_entry)
+            self.ddd_report.finished_sig.connect(self.report_finished)
             self.ddd_report.ddd_drug_sig.connect(self.ddd_display)
             self.ddd_report.ddd_progress_sig.connect(
                 lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))
@@ -297,7 +298,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.report_thread = PrescriptionReportThread(data_type, presc_data, record_completed, self.driver,
                                                           self.driver_wait)
             self.report_thread.presc_sig.connect(self.presc_display)  # 连接信号槽，在UI上显示处方信息
-            self.report_thread.presc_end_sig.connect(self.presc_report_end)  # 连接信号槽，处方上报结束，返回主界面
+            self.report_thread.finished_sig.connect(self.report_finished)  # 连接信号槽，处方上报结束，返回主界面
             self.report_thread.presc_progress_sig.connect(
                 lambda progress_sig: self.progress.append(progress_sig))  # 连接信号槽,在UI上显示进度
             self.report_thread.start()
@@ -359,16 +360,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ddd_report.ddd_drug_name = ddd_drug_name
         self.ddd_report.isPause = False
 
-    def set_ddd_start_record(self):
+    def check_start_entry(self):
         current_row = self.tableView.currentIndex().row()  # 取得当前选中行的index，不选默认为-1
         if current_row == -1:
             QMessageBox.warning(self, "请选择", "未选择开始条目，请点击药品条目后重试！", QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.Yes)
         else:
-            self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
+            # self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
+            self.start_record_sig.connect(self.ddd_report.do_report)
+            self.start_record_sig.emit(current_row)
 
-    def presc_report_end(self):
+    def report_finished(self):
+        print('上报任务完成，返回主界面！')
         self.stackedWidget.setCurrentIndex(0)
+        self.thread.quit()
 
 
 class LoginWindow(QMainWindow, Ui_LoginWindow):
