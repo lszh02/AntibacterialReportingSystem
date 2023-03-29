@@ -57,8 +57,8 @@ class PrescriptionUpdateDep(Prescription, QWidget):
 
 class PrescriptionReportThread(QThread):
     # 信号是类变量，必须在类中定义，不能在实例方法中定义，否则后面发射信号和连接槽方法时都会报错。
-    presc_sig = pyqtSignal(dict)
-    presc_progress_sig = pyqtSignal(str)
+    prescription_sig = pyqtSignal(dict)
+    prescription_progress_sig = pyqtSignal(str)
     finished_sig = pyqtSignal()
 
     def __init__(self, data_type, data, record_completed, web_driver, wait):
@@ -75,32 +75,32 @@ class PrescriptionReportThread(QThread):
         ddd_drug_dict = DDDReport.get_ddd_drug_dict()
 
         # 遍历剩余处方信息
-        for one_presc in self.data[self.record_completed:]:
-            self.presc_sig.emit(one_presc)  # 发送信号：一条处方信息
+        for one_prescription in self.data[self.record_completed:]:
+            self.prescription_sig.emit(one_prescription)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = PrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_presc, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = JzPrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
 
-            self.presc_progress_sig.emit(
+            self.prescription_progress_sig.emit(
                 '—' * 5 + f"开始填报第{self.record_completed + 1}条记录！" + '—' * 5)  # 发送信号：进度信息
-            self.presc_progress_sig.emit(report.input_department_name())  # 发送信号：选择科室
-            self.presc_progress_sig.emit(report.input_age())  # 发送信号：输入年龄
-            self.presc_progress_sig.emit(report.input_gender())  # 发送信号：选择性别
-            self.presc_progress_sig.emit(report.input_total_money())  # 发送信号：输入处方金额
-            self.presc_progress_sig.emit(report.input_quantity_of_drugs())  # 发送信号：输入药品总数
-            self.presc_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
-            self.presc_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
-            self.presc_progress_sig.emit(report.save_data())  # 发送信号：保存数据
-            self.presc_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
+            self.prescription_progress_sig.emit(report.input_department_name())  # 发送信号：选择科室
+            self.prescription_progress_sig.emit(report.input_age())  # 发送信号：输入年龄
+            self.prescription_progress_sig.emit(report.input_gender())  # 发送信号：选择性别
+            self.prescription_progress_sig.emit(report.input_total_money())  # 发送信号：输入处方金额
+            self.prescription_progress_sig.emit(report.input_quantity_of_drugs())  # 发送信号：输入药品总数
+            self.prescription_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
+            self.prescription_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
+            self.prescription_progress_sig.emit(report.save_data())  # 发送信号：保存数据
+            self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
-            self.presc_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
-            self.presc_progress_sig.emit('')  # 空一行
-        self.presc_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
-        self.presc_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
+            self.prescription_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
+            self.prescription_progress_sig.emit('')  # 空一行
+        self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
+        self.prescription_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
         time.sleep(10)
         self.finished_sig.emit()
 
@@ -121,11 +121,6 @@ class DDDReportByUI(DDDReport, QObject):
         DDDReport.__init__(self, ddd_data, None, self.driver, self.driver_wait)
 
     def do_report(self):
-        # 等待UI传参
-        self.start_record_sig.emit('从哪一条开始？')  # 发送信号：从哪一条开始？
-        while self.start_record is None:
-            time.sleep(0.01)
-
         # 遍历剩余信息
         for one_info in self.ddd_data[self.start_record:]:
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
@@ -185,7 +180,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(0)
 
         self.file_btn.clicked.connect(self.file_choose)
-        self.start_btn.clicked.connect(self.start_report)
+        self.start_btn.clicked.connect(self.set_options)
         self.exit_btn.clicked.connect(lambda: sys.exit())
         self.data_type.currentIndexChanged.connect(self.data_type_changed)
 
@@ -208,13 +203,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.data_type.currentIndex() == 3:
             self.ddd_sheet.setCurrentIndex(1)
             self.ddd_sheet.setEnabled(True)
-            self.presc_sheet.setEnabled(False)
+            self.prescription_sheet.setEnabled(False)
             self.drug_sheet.setEnabled(False)
         else:
-            self.presc_sheet.setCurrentIndex(2)
+            self.prescription_sheet.setCurrentIndex(2)
             self.drug_sheet.setCurrentIndex(3)
             self.ddd_sheet.setEnabled(False)
-            self.presc_sheet.setEnabled(True)
+            self.prescription_sheet.setEnabled(True)
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
@@ -222,7 +217,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if filename != "":
             self.file_path_text.setText(filename)
 
-    def start_report(self):
+    def set_options(self):
         # 获取上报类型：0为未选择，1为门诊处方，2为急诊处方，3为DDD
         data_type = self.data_type.currentIndex()
         # 获取Excel文件
@@ -246,39 +241,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     QMessageBox.Yes)
                 return
 
-            # 设置表格列宽
-            self.set_ui_table_width()
-
-            # 跳转DDD页面
+            # 跳转DDD页面，设置表格列宽
             self.stackedWidget.setCurrentIndex(2)
             self.tabWidget.setCurrentIndex(0)
+            self.set_ui_table_width()
+            self.set_drugs_list(ddd_data)
 
             # 开启新进程进行DDD上报
-            self.thread = QThread()
-            self.ddd_report = DDDReportByUI(ddd_data, self.driver, self.driver_wait)
-            self.ddd_report.moveToThread(self.thread)
-
-            # 连接信号槽：btn_ok链接DDD上报工作开始，取得当前选中行的index行号，在UI上显示处方信息和进度，当字典需要更新时调用UI跨进程传参。
-            self.btn_ok.clicked.connect(self.check_start_entry)
-            self.ddd_report.finished_sig.connect(self.report_finished)
-            self.ddd_report.ddd_drug_sig.connect(self.ddd_display)
-            self.ddd_report.ddd_progress_sig.connect(
-                lambda ddd_progress_sig: self.ddd_progress.append(ddd_progress_sig))
-            self.ddd_report.ddd_update_sig.connect(self.update_ddd_drug_name)
-
-            self.thread.start()
-            self.set_drugs_list(ddd_data)
+            self.ddd_report(ddd_data)
 
         else:
             # 获取Sheet表格
-            presc_sheet = self.presc_sheet.currentText()
+            prescription_sheet = self.prescription_sheet.currentText()
             drug_sheet = self.drug_sheet.currentText()
             try:
                 # 打开excel文件，获取处方基本信息和处方药品信息
-                base_sheet = read_excel(excel_file, presc_sheet)
+                base_sheet = read_excel(excel_file, prescription_sheet)
                 drug_sheet = read_excel(excel_file, drug_sheet)
                 # 实例化处方数据，更新科室字典
-                presc_data = PrescriptionUpdateDep(base_sheet, drug_sheet).get_prescription_data()
+                prescription_data = PrescriptionUpdateDep(base_sheet, drug_sheet).get_prescription_data()
             except Exception as e:
                 print(e)
                 # 后两项分别为按钮(以|隔开，共有7种按钮类型，见示例后)、默认按钮(省略则默认为第一个按钮)
@@ -295,11 +276,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             record_completed, ok = QInputDialog.getInt(self, "是否断点续录", "请输入已录入记录条数:", 0, 0, 10000, 1)
 
             # 开启新进程调用上报程序
-            self.report_thread = PrescriptionReportThread(data_type, presc_data, record_completed, self.driver,
+            self.report_thread = PrescriptionReportThread(data_type, prescription_data, record_completed, self.driver,
                                                           self.driver_wait)
-            self.report_thread.presc_sig.connect(self.presc_display)  # 连接信号槽，在UI上显示处方信息
-            self.report_thread.finished_sig.connect(self.report_finished)  # 连接信号槽，处方上报结束，返回主界面
-            self.report_thread.presc_progress_sig.connect(
+            self.report_thread.prescription_sig.connect(self.prescription_display)  # 连接信号槽，在UI上显示处方信息
+            self.report_thread.finished_sig.connect(self.prescription_report_finished)  # 连接信号槽，处方上报结束，返回主界面
+            self.report_thread.prescription_progress_sig.connect(
                 lambda progress_sig: self.progress.append(progress_sig))  # 连接信号槽,在UI上显示进度
             self.report_thread.start()
 
@@ -322,19 +303,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置只能选中一行
         self.tableView.setEditTriggers(QTableView.NoEditTriggers)  # 不可编辑
 
-    def presc_display(self, presc_sig):  # 这里是接收信号
+    def prescription_display(self, prescription_sig):  # 这里是接收信号
         # 将处方信息显示在UI上面
-        self.id.setText(presc_sig.get('prescription_id'))
-        self.dep.setText(presc_sig.get('department'))
-        self.name.setText(presc_sig.get('patient_name'))
-        self.age.setText(presc_sig.get('age'))
-        self.gender.setCurrentIndex(0 if presc_sig.get('gender') == 'man' else 1)
+        self.id.setText(prescription_sig.get('prescription_id'))
+        self.dep.setText(prescription_sig.get('department'))
+        self.name.setText(prescription_sig.get('patient_name'))
+        self.age.setText(prescription_sig.get('age'))
+        self.gender.setCurrentIndex(0 if prescription_sig.get('gender') == 'man' else 1)
         self.diagnosis.setText('')
-        for i in presc_sig.get('diagnosis'):
+        for i in prescription_sig.get('diagnosis'):
             self.diagnosis.append(i)
 
         self.drug_info.clearContents()  # 仅删除表格中数据区内所有单元格的内容
-        for index, one_drug in enumerate(presc_sig.get('drug_info')):
+        for index, one_drug in enumerate(prescription_sig.get('drug_info')):
             self.drug_info.setItem(index, 0, QtWidgets.QTableWidgetItem(one_drug.get('drug_name')))
             self.drug_info.setItem(index, 1, QtWidgets.QTableWidgetItem(one_drug.get('specifications')))
             self.drug_info.setItem(index, 2, QtWidgets.QTableWidgetItem(one_drug.get('usage')))
@@ -360,20 +341,48 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ddd_report.ddd_drug_name = ddd_drug_name
         self.ddd_report.isPause = False
 
-    def check_start_entry(self):
-        current_row = self.tableView.currentIndex().row()  # 取得当前选中行的index，不选默认为-1
+    def ddd_report(self, ddd_data):
+        self.thread = QThread()
+        self.ddd_reporter = DDDReportByUI(ddd_data, self.driver, self.driver_wait)
+        self.ddd_reporter.moveToThread(self.thread)
+
+        # 连接信号槽：
+        self.thread.started.connect(self.ddd_reporter.do_report)
+        self.ddd_reporter.finished_sig.connect(self.ddd_report_finished)
+
+        # btn_ok链接取得当前选中行的index行号并开始DDD上报工作
+        self.btn_ok.clicked.connect(self.get_start_num_and_report)
+
+        # 在UI上显示药品信息和上报进度
+        self.ddd_reporter.ddd_drug_sig.connect(self.ddd_display)
+        self.ddd_reporter.ddd_progress_sig.connect(
+            lambda ddd_progress_sig: self.ddd_progress_text.append(ddd_progress_sig))
+
+        # 当药品字典需要更新时调用UI跨进程传参
+        self.ddd_reporter.ddd_update_sig.connect(self.update_ddd_drug_name)
+
+    def get_start_num_and_report(self):
+        # 取得当前选中行的index，不选默认为-1
+        current_row = self.tableView.currentIndex().row()
         if current_row == -1:
             QMessageBox.warning(self, "请选择", "未选择开始条目，请点击药品条目后重试！", QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.Yes)
         else:
-            # self.ddd_report.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
-            self.start_record_sig.connect(self.ddd_report.do_report)
-            self.start_record_sig.emit(current_row)
+            self.ddd_reporter.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
+            self.thread.start()
 
-    def report_finished(self):
+    def ddd_report_finished(self):
         print('上报任务完成，返回主界面！')
         self.stackedWidget.setCurrentIndex(0)
         self.thread.quit()
+        self.ddd_reporter.deleteLater()
+        self.thread.deleteLater()
+
+    def prescription_report_finished(self):
+        print('上报任务完成，返回主界面！')
+        self.stackedWidget.setCurrentIndex(0)
+        self.report_thread.quit()
+        self.report_thread.deleteLater()
 
 
 class LoginWindow(QMainWindow, Ui_LoginWindow):
@@ -446,8 +455,12 @@ class LoginThread(QThread):
             self.driver.implicitly_wait(self.wait_time)  # 隐式等待
             self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
 
-        # Use selenium to login to website
-        self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
+        try:
+            # Use selenium to login to website
+            self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
+        except Exception as e:
+            print(e)
+            self.login_signal.emit(False)
 
     def login(self, web_driver, url=None, account=None, pwd=None):
         web_driver.get(url)  # 打开网址
@@ -456,13 +469,9 @@ class LoginThread(QThread):
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
         web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-
         # 能定位到“退出”按钮即表示登录成功
-        try:
-            self.driver_wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
-            self.login_signal.emit(True)
-        except Exception as e:
-            self.login_signal.emit(False)
+        self.driver_wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
+        self.login_signal.emit(True)
 
 
 if __name__ == '__main__':
