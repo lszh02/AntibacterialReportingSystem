@@ -338,8 +338,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def update_ddd_drug_name(self, drug_name):
         ddd_drug_name, ok = QInputDialog.getText(self, "药品名称字典需更新", f'请输入{drug_name} 在上报系统中的名字:', QLineEdit.Normal, "")
-        self.ddd_report.ddd_drug_name = ddd_drug_name
-        self.ddd_report.isPause = False
+        self.ddd_reporter.ddd_drug_name = ddd_drug_name
+        self.ddd_reporter.isPause = False
 
     def ddd_report(self, ddd_data):
         self.thread = QThread()
