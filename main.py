@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import traceback
 
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import pyqtSignal, QThread, QObject
@@ -94,6 +95,8 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
             self.prescription_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
             self.prescription_progress_sig.emit(report.save_data())  # 发送信号：保存数据
+            # fixme 此处点击保存后，页面可能还没刷新就开始填报下一条记录，导致填报诊断时报错
+            time.sleep(1)
             self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
@@ -169,7 +172,7 @@ class DDDReportByUI(DDDReport, QObject):
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    start_record_sig = pyqtSignal(int)
+    input_error_sig = pyqtSignal(str)
 
     def __init__(self, driver, driver_wait):
         super().__init__()
@@ -261,7 +264,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # 实例化处方数据，更新科室字典
                 prescription_data = PrescriptionUpdateDep(base_sheet, drug_sheet).get_prescription_data()
             except Exception as e:
-                print(e)
+                # print(e)
+                traceback.print_exc()
                 # 后两项分别为按钮(以|隔开，共有7种按钮类型，见示例后)、默认按钮(省略则默认为第一个按钮)
                 QMessageBox.warning(self, "无法上报", f"原因为：{e}", QMessageBox.Yes | QMessageBox.No,
                                     QMessageBox.Yes)
@@ -337,9 +341,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ddd_drug_info.setItem(0, 4, QtWidgets.QTableWidgetItem(str(ddd_drug_sig.get('money'))))
 
     def update_ddd_drug_name(self, drug_name):
+        # 获取输入内容，更新字典。
         ddd_drug_name, ok = QInputDialog.getText(self, "药品名称字典需更新", f'请输入{drug_name} 在上报系统中的名字:', QLineEdit.Normal, "")
-        self.ddd_reporter.ddd_drug_name = ddd_drug_name
-        self.ddd_reporter.isPause = False
+        if ok and ddd_drug_name:
+            self.ddd_reporter.ddd_drug_name = ddd_drug_name
+            self.ddd_reporter.isPause = False
+        else:
+            # TODO 如果输入为空或者点击取消按钮，则不更新字典。
+            # 后两项分别为按钮(以|隔开，共有7种按钮类型，见示例后)、默认按钮(省略则默认为第一个按钮)
+            # 选择Yes代码中replay为16384, 选择No则replay为65536
+            reply = QMessageBox.question(self, "异常输入", "网络系统中无对应的品种吗？", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if reply == 16384:
+                self.input_error_sig.emit()
+                pass
+            else:
+                pass
 
     def ddd_report(self, ddd_data):
         self.thread = QThread()
