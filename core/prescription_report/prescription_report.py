@@ -181,10 +181,10 @@ class PrescriptionReport:
         # 诊断可以输入1-5个
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
-            if '癌' in diagnosis_list[i]:
-                diagnosis.replace('癌', '肿瘤')
-            if '泌尿系感染' in diagnosis_list[i]:
-                diagnosis.replace('泌尿系感染', '泌尿道感染')
+            if '癌' in diagnosis:
+                diagnosis = diagnosis.replace('癌', '肿瘤')
+            if '泌尿系感染' in diagnosis:
+                diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
 
             self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.web_driver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
