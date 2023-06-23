@@ -472,7 +472,7 @@ class LoginThread(QThread):
             self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
 
         try:
-            # Use selenium to login to website
+            # Use selenium to logining to website
             self.login(self.driver, url="http://y.chinadtc.org.cn/login", account=self.username, pwd=self.password)
         except Exception as e:
             print(e)

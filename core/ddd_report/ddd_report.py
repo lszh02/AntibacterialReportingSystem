@@ -3,9 +3,7 @@ import copy
 import json
 import os
 
-import pyautogui
 import time
-import pyperclip
 import win32api
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -156,8 +154,8 @@ class DDDReport:
 
 if __name__ == '__main__':
     # 打开文件，获取sheet页
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年'
-    file_name = "最终数据-第二季度.xls"
+    excel_path = r'D:\JP101个人文件\张思龙\1.药事\抗菌药物监测\2023年'
+    file_name = "2023年第一季度抗菌药物使用明细.xls"
     worksheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet2')
 
     # 实例化处方数据
