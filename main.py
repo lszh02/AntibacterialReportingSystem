@@ -86,7 +86,7 @@ class PrescriptionReportThread(QThread):
                 report = JzPrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
 
             self.prescription_progress_sig.emit(
-                '—' * 5 + f"开始填报第{self.record_completed + 1}条记录！" + '—' * 5)  # 发送信号：进度信息
+                '—' * 4 + f"开始填报第{self.record_completed + 1}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
             self.prescription_progress_sig.emit(report.input_department_name())  # 发送信号：选择科室
             self.prescription_progress_sig.emit(report.input_age())  # 发送信号：输入年龄
             self.prescription_progress_sig.emit(report.input_gender())  # 发送信号：选择性别
@@ -100,7 +100,7 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
-            self.prescription_progress_sig.emit('—' * 5 + f"已填报{self.record_completed}条记录！" + '—' * 5)  # 发送信号：进度信息
+            self.prescription_progress_sig.emit('—' * 4 + f"已填报{self.record_completed}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
             self.prescription_progress_sig.emit('')  # 空一行
         self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
         self.prescription_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
