@@ -194,6 +194,11 @@ class PrescriptionReport:
             try:
                 web_diagnosis_list = self.wait.until(
                     ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))  # 每一行
+
+                # TODO 将无法与网络系统匹配的诊断导出，以便后续分析。
+                # with open('diagnosis_cant_input.txt', 'a') as f:
+                #     f.write(diagnosis + '\n')
+
                 # 自动录入诊断可能无响应，此处获取手动修改后的输入诊断
                 diagnosis_change = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 for web_diagnosis in web_diagnosis_list:
@@ -271,6 +276,8 @@ class PrescriptionReport:
 
                 # 输入其他细节
                 self.input_other_details(one_drug_info, one_row_unit)
+
+                # TODO 判断抗菌药物限制级别
 
                 # 保存抗菌药物
                 self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
