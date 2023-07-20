@@ -30,20 +30,6 @@ def login(web_driver, url="http://y.chinadtc.org.cn/login", account='44030631100
             # up = 0 or 1, down = -127 or -128
             break
 
-    # web_driver.find_element(By.ID, 'report').click()  # 单击登录
-    # # 选择时间
-    # web_driver.find_element(By.CSS_SELECTOR, 'input[value="确定"]').click()  # 单击登录
-    # wait.until(ec.alert_is_present())
-    # web_driver.switch_to.alert.accept()
-    #
-    # web_driver.find_element(By.CSS_SELECTOR, 'a[title="录入功能"]').click()  # 单击登录
-    # if mode == 1:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/1"]').click()  # 单击"门诊处方用药录入"
-    # elif mode == 2:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/mjz/index/mjztype/2"]').click()  # 单击"急诊处方用药录入"
-    # elif mode == 3:
-    #     web_driver.find_element(By.CSS_SELECTOR, 'a[href="/entering/kjyxh/"]').click()  # 单击"抗菌药物消耗情况录入"
-
 
 class PrescriptionReport:
     def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict, web_driver, wait):
@@ -195,15 +181,16 @@ class PrescriptionReport:
                 web_diagnosis_list = self.wait.until(
                     ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))  # 每一行
 
-                # TODO 将无法与网络系统匹配的诊断导出，以便后续分析。
-                # with open('diagnosis_cant_input.txt', 'a') as f:
-                #     f.write(diagnosis + '\n')
+                # 医生的诊断可能无法与网络系统诊断匹配，如不能匹配，可手动修改后再查询。
+                # 此处获取能查询到结果的“输入内容”，判断是医生的原始诊断 还是修改后的诊断？
+                input_diagnosis_text = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
+                if input_diagnosis_text != diagnosis:
+                    # 将无法与网络系统匹配的诊断导出，以便后续分析。
+                    with open('diagnosis_cant_input.txt', 'a', encoding='utf-8') as f:
+                        f.write(diagnosis + '>>>' + input_diagnosis_text + '\n')
 
-                # 自动录入诊断可能无响应，此处获取手动修改后的输入诊断
-                diagnosis_change = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 for web_diagnosis in web_diagnosis_list:
-                    # print(f'------{web_diagnosis.text}--------')
-                    if web_diagnosis.text == diagnosis_change:
+                    if web_diagnosis.text == input_diagnosis_text:
                         web_diagnosis.click()
                         print(f'输入诊断：{diagnosis}')
                         break
