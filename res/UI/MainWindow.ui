@@ -810,7 +810,7 @@
       </rect>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -857,7 +857,7 @@
       <attribute name="title">
        <string>进度</string>
       </attribute>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <property name="geometry">
         <rect>
          <x>0</x>
@@ -939,7 +939,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QTextBrowser" name="ddd_progress"/>
+           <widget class="QTextBrowser" name="ddd_progress_text"/>
           </item>
          </layout>
         </item>

@@ -1,37 +1,50 @@
 import os.path
 
-import pyautogui
 import time
-import pyperclip
 import win32api
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
+
+from core.ddd_report.ddd_report import DDDReport
+from db import database
+from db.database import read_excel
 
 current_path = os.path.dirname(__file__)
 res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 
-def mouse_click(img, click_times=1, l_or_r="left"):
-    # 定义鼠标事件
-    # pyautogui库其他用法 https://blog.csdn.net/qingfengxd1/article/details/108270159
+def login(web_driver, url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***'):
+    web_driver.get(url)  # 打开网址
+    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
+    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
+    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+    print('请手动选择时间和上报模块！完成后单击右键继续……')
     while True:
-        location = pyautogui.locateCenterOnScreen(img, confidence=0.9)
-        if location is not None:
-            pyautogui.click(location.x, location.y, clicks=click_times, interval=0.2, duration=0.2, button=l_or_r)
+        time.sleep(0.001)
+        if win32api.GetKeyState(0x02) < 0:
+            # up = 0 or 1, down = -127 or -128
             break
-        print("未找到匹配图片,0.2秒后重试")
-        time.sleep(0.2)
 
 
 class PrescriptionReport:
-    def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict):
+    def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict, web_driver, wait):
         """
-        读取一条处方信息，执行上报。
+        传入一条处方信息，科室字典，抗菌药字典和webdriver对象，执行网页自动上报。
         :param one_prescription_info: 一条处方信息
         :param dep_dict: 科室字典
         :param ddd_drug_dict: 抗菌药字典
+        :param web_driver: selenium的webdriver
         """
         self.prescription_info = one_prescription_info
         self.dep_dict = dep_dict
         self.ddd_drug_dict = ddd_drug_dict
+        self.web_driver = web_driver
+        self.wait = wait
 
     def do_report(self):
         # 选择科室
@@ -56,163 +69,157 @@ class PrescriptionReport:
         self.input_diagnosis()
 
         # 保存数据
-        mouse_click(rf"{res_path}/image/prescription_image/save.png")
-        mouse_click(rf"{res_path}/image/prescription_image/enter.png")
-        print("保存数据")
+        self.save_data()
 
         # 判断是否有抗菌药物
         self.antibacterial_or_not()
 
     def input_department_name(self):
-        dep_chinese_name = self.prescription_info.get("department")
-        dep_pic_name = self.dep_dict.get(dep_chinese_name)
-        out_of_range = ['dep_huxi', 'dep_xinxiongwai', 'dep_yan', 'dep_xueye', 'dep_xinnei',
-                        'dep_shennei', 'dep_zhongyi', 'dep_erbihou', 'dep_ganranxingjibing']
+        # 通过科室字典dep_dict获取科室对应的网络上报名称
+        dep_web_name = self.dep_dict.get(self.prescription_info.get("department"))
 
-        mouse_click(rf'{res_path}/image/prescription_image/dep_1.png')
-        print(f"点击：所属科室")
-
-        if dep_pic_name in out_of_range:
-            # 向下拖动滚动条
-            mouse_click(rf'{res_path}/image/prescription_image/dep_2.png')
-            pyautogui.dragRel(0, 200, duration=0.2)
-        mouse_click(rf"{res_path}/image/prescription_image/dep_image/{dep_pic_name}.png")
-        return f'选择科室：{dep_chinese_name}'
+        # 通过Select对象,选中对应科室
+        Select(self.web_driver.find_element(By.ID, "department")).select_by_visible_text(dep_web_name)
+        print(f'选择科室：{self.prescription_info.get("department")}')
+        return f'选择科室：{self.prescription_info.get("department")}'
 
     def input_age(self):
-        mouse_click(rf"{res_path}/image/prescription_image/age.png")
-        print("点击：年龄")
+        # 创建Select对象
+        age_sel = Select(self.web_driver.find_element(By.ID, "ageSel"))  # 可选项有‘岁、月、周、天‘
         age = self.prescription_info.get("age")
         if '岁' in age:
-            age = age.split("岁")[0]
-            pyperclip.copy(age)
-            pyautogui.hotkey('ctrl', 'v')
-            return f"输入年龄:{age}岁"
+            age = age.split('岁')[0]
+            age_sel.select_by_visible_text('岁')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
+            self.web_driver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}岁')
+            return f'输入年龄:{age}岁'
         elif '月' in age:
-            age = age.split("月")[0]
-            pyperclip.copy(age)
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/prescription_image/age_year.png")
-            mouse_click(rf"{res_path}/image/prescription_image/age_month.png")
-            return f"输入年龄:{age}月"
+            age = age.split('月')[0]
+            age_sel.select_by_visible_text('月')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
+            self.web_driver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}月')
+            return f'输入年龄:{age}月'
+        elif '周' in age:
+            age = age.split('周')[0]
+            age_sel.select_by_visible_text('周')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
+            self.web_driver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}周')
+            return f'输入年龄:{age}周'
         elif '天' in age:
-            age = age.split("天")[0]
-            pyperclip.copy(age)
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/prescription_image/age_year.png")
-            mouse_click(rf"{res_path}/image/prescription_image/age_day.png")
-            return f"输入年龄:{age}天"
+            age = age.split('天')[0]
+            age_sel.select_by_visible_text('天')
+            self.web_driver.find_element(By.ID, "age").clear()  # 清除输入框数据
+            self.web_driver.find_element(By.ID, "age").send_keys(age)
+            print(f'输入年龄:{age}天')
+            return f'输入年龄:{age}天'
 
     def input_gender(self):
         gender = self.prescription_info.get("gender")
-        mouse_click(rf'{res_path}/image/prescription_image/{gender}.png')
         if gender == 'man':
+            self.web_driver.find_element(By.ID, 'sexM').click()  # 'sexM'为男
+            print(f"选择性别：男")
             return f"选择性别：男"
         elif gender == 'woman':
+            self.web_driver.find_element(By.ID, 'sexW').click()  # 'sexW'为女
+            print(f"选择性别：女")
             return f"选择性别：女"
 
     def input_total_money(self):
-        mouse_click(rf"{res_path}/image/prescription_image/money.png")
-        print("点击：处方金额")
         money = self.prescription_info.get("total_money")
-        pyperclip.copy(round(money, 2))
-        pyautogui.hotkey('ctrl', 'v')
+        self.web_driver.find_element(By.ID, 'outAmount').clear()  # 清除输入框数据
+        self.web_driver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
         if money > 10000:
-            pyautogui.alert(text='药品金额大于10000元！', title='请确认：', button='YES')
-        return f"输入处方金额:{round(money, 2)}"
+            self.wait.until(ec.alert_is_present())
+            self.web_driver.switch_to.alert.accept()
+
+        print(f'输入处方金额:{round(money, 2)}')
+        return f'输入处方金额:{round(money, 2)}'
 
     def input_quantity_of_drugs(self):
-        # 输入药品总数
-        mouse_click(rf"{res_path}/image/prescription_image/drugs_count.png")
-        print("点击：药品品种数")
         drugs_count = len(self.prescription_info.get("drug_info"))
-        print(drugs_count)
-        pyperclip.copy(drugs_count)
-        pyautogui.hotkey('ctrl', 'v')
-        return f"输入药品数量:{drugs_count}"
+        self.web_driver.find_element(By.ID, 'outDrugs').clear()  # 清除输入框数据
+        self.web_driver.find_element(By.ID, 'outDrugs').send_keys(drugs_count)
+        print(f'输入药品数量:{drugs_count}')
+        return f'输入药品数量:{drugs_count}'
 
     def injection_or_not(self):
         inj_count = 0
         for drug in self.prescription_info.get('drug_info'):
-            if '注射' in drug.get('drug_name') or '狂犬病疫苗' in drug.get('drug_name') or '破伤风' in drug.get('drug_name'):
-                inj_count += 1
+            for i in ['注射', '狂犬病疫苗', '破伤风']:
+                if i in drug.get('drug_name'):
+                    inj_count += 1
+                    break
         if inj_count != 0:
-            mouse_click(rf"{res_path}/image/prescription_image/inj01.png")
-            mouse_click(rf"{res_path}/image/prescription_image/inj02.png")
-            pyperclip.copy(inj_count)
-            pyautogui.hotkey('ctrl', 'v')
-            return f"输入注射剂数量:{inj_count}"
+            self.web_driver.find_element(By.ID, 'infusionY').click()
+            self.web_driver.find_element(By.ID, 'infusionNum').clear()  # 清除输入框数据
+            self.web_driver.find_element(By.ID, 'infusionNum').send_keys(inj_count)
+            print(f'输入注射剂数量:{inj_count}')
+            return f'输入注射剂数量:{inj_count}'
         else:
+            print('该处方中无注射剂')
             return '该处方中无注射剂'
 
     def input_diagnosis(self):
-        mouse_click(rf"{res_path}/image/prescription_image/diagnosis1.png")
-        print("点击：诊断1")
-        diagnosis = self.prescription_info.get("diagnosis")
+        diagnosis_list = self.prescription_info.get("diagnosis")
+        # 诊断可以输入1-5个
+        for i in range(min(len(diagnosis_list), 5)):
+            diagnosis = diagnosis_list[i]
+            if '癌' in diagnosis:
+                diagnosis = diagnosis.replace('癌', '肿瘤')
+            if '泌尿系感染' in diagnosis:
+                diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
 
-        # FIXME 多诊断时只取前三个，其他诊断不录入
-        diagnosis1 = diagnosis[0]
-        if '癌' in diagnosis1:
-            diagnosis1 = diagnosis1.replace('癌', '肿瘤')
-        if '泌尿系感染' in diagnosis1:
-            diagnosis1 = diagnosis1.replace('泌尿系感染', '泌尿道感染')
+            self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
+            self.web_driver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
+            self.web_driver.find_element(By.CSS_SELECTOR, '.diagnosisShade input[value="查询"]').click()
 
-        pyperclip.copy(f"{diagnosis1}")
-        pyautogui.hotkey('ctrl', 'v')
-        mouse_click(rf"{res_path}/image/prescription_image/search.png")
-        print('请输入诊断！')
-        while True:
-            time.sleep(0.001)
-            if win32api.GetKeyState(0x02) < 0:
-                # up = 0 or 1, down = -127 or -128
-                break
+            # 获取网络诊断列表，与输入的诊断进行匹配
+            try:
+                web_diagnosis_list = self.wait.until(
+                    ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-diag table .nameHtml a")))  # 每一行
 
-        if len(diagnosis) > 1:
-            mouse_click(rf"{res_path}/image/prescription_image/diagnosis2.png")
-            print("点击：诊断2")
-            diagnosis2 = diagnosis[1]
-            if '癌' in diagnosis2:
-                diagnosis2 = diagnosis2.replace('癌', '肿瘤')
-            if '泌尿系感染' in diagnosis2:
-                diagnosis2 = diagnosis2.replace('泌尿系感染', '泌尿道感染')
+                # 医生的诊断可能无法与网络系统诊断匹配，如不能匹配，可手动修改后再查询。
+                # 此处获取能查询到结果的“输入内容”，判断是医生的原始诊断 还是修改后的诊断？
+                input_diagnosis_text = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
+                if input_diagnosis_text != diagnosis:
+                    # 将无法与网络系统匹配的诊断导出，以便后续分析。
+                    with open('diagnosis_cant_input.txt', 'a', encoding='utf-8') as f:
+                        f.write(diagnosis + '>>>' + input_diagnosis_text + '\n')
 
-            pyperclip.copy(f"{diagnosis2}")
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/prescription_image/search.png")
-            print('请输入诊断！')
-            while True:
-                time.sleep(0.001)
-                if win32api.GetKeyState(0x02) < 0:
-                    # up = 0 or 1, down = -127 or -128
-                    break
-
-        if len(diagnosis) > 2:
-            mouse_click(rf"{res_path}/image/prescription_image/diagnosis3.png")
-            print("点击：诊断3")
-            diagnosis3 = diagnosis[2]
-            if '癌' in diagnosis3:
-                diagnosis3 = diagnosis3.replace('癌', '肿瘤')
-            if '泌尿系感染' in diagnosis3:
-                diagnosis3 = diagnosis3.replace('泌尿系感染', '泌尿道感染')
-
-            pyperclip.copy(f"{diagnosis3}")
-            pyautogui.hotkey('ctrl', 'v')
-            mouse_click(rf"{res_path}/image/prescription_image/search.png")
-            print('请输入诊断！')
-            while True:
-                time.sleep(0.001)
-                if win32api.GetKeyState(0x02) < 0:
-                    # up = 0 or 1, down = -127 or -128
-                    break
-        return f'输入诊断：{diagnosis}'
+                for web_diagnosis in web_diagnosis_list:
+                    if web_diagnosis.text == input_diagnosis_text:
+                        web_diagnosis.click()
+                        print(f'输入诊断：{diagnosis}')
+                        break
+                else:
+                    print('无匹配诊断，请手动输入！完成后单击右键继续……')
+                    while True:
+                        time.sleep(0.001)
+                        if win32api.GetKeyState(0x02) < 0:
+                            # up = 0 or 1, down = -127 or -128
+                            break
+            except Exception as e:
+                print(f'输入诊断出错！错误信息为：{e}')
+                print('请手动输入！完成后单击右键继续……')
+                while True:
+                    time.sleep(0.001)
+                    if win32api.GetKeyState(0x02) < 0:
+                        # up = 0 or 1, down = -127 or -128
+                        break
+        return f'输入诊断：{diagnosis_list}'
 
     def antibacterial_or_not(self):
         drug_list = self.prescription_info.get('drug_info')
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
             if drug_name in self.ddd_drug_dict:
-                mouse_click(rf"{res_path}/image/prescription_image/has_antibacterial.png")
-                mouse_click(rf"{res_path}/image/prescription_image/input_antibacterial.png")
+                self.web_driver.find_element(By.CSS_SELECTOR,
+                                             '#outpatientTable tr:nth-child(2) div:nth-child(2)').click()  # 单击“有”
+                self.web_driver.find_element(By.CSS_SELECTOR,
+                                             '#outpatientTable input[value="录入详细信息"]').click()  # 单击录入
                 self.input_antibacterial(drug_list)
                 break
         else:
@@ -223,58 +230,157 @@ class PrescriptionReport:
         antibacterial_list = []
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
+            drug_specification = one_drug_info.get('specifications')
             if drug_name in self.ddd_drug_dict:
                 antibacterial_list.append(drug_name)
                 # 输入抗菌药名称
-                mouse_click(rf"{res_path}/image/prescription_image/input_antibacterial_name.png")
-                pyperclip.copy(self.ddd_drug_dict.get(drug_name))
-                pyautogui.hotkey('ctrl', 'v')
-                mouse_click(rf"{res_path}/image/prescription_image/search.png")
-                while True:
-                    time.sleep(0.001)
-                    if win32api.GetKeyState(0x02) < 0:
-                        # up = 0 or 1, down = -127 or -128
-                        break
+                self.web_driver.find_element(By.ID, 'medicineName').click()
+                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+                self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
-                # 输入抗菌药金额
-                mouse_click(rf"{res_path}/image/prescription_image/input_antibacterial_money.png")
-                pyperclip.copy(one_drug_info.get('money'))
-                pyautogui.hotkey('ctrl', 'v')
-
-                # 输入抗菌药数量
-                mouse_click(rf"{res_path}/image/prescription_image/input_antibacterial_quantity.png")
-                pyperclip.copy(one_drug_info.get('quantity'))
-                pyautogui.hotkey('ctrl', 'v')
-                while True:
-                    time.sleep(0.001)
-                    if win32api.GetKeyState(0x02) < 0:
-                        # up = 0 or 1, down = -127 or -128
+                # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
+                web_drug_rows = self.wait.until(
+                    ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-drug table tr")))  # 每一行
+                one_row_unit = ''
+                for one_row in web_drug_rows:
+                    one_row_name = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(2)").text  # 药品网络名称
+                    one_row_spec = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
+                    one_row_unit = one_row.find_element(By.CSS_SELECTOR,
+                                                        "#ceng-drug table td:nth-child(4)").text  # 药品网络单位
+                    if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[
+                        0] == one_row_spec:
+                        one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
                         break
+                else:
+                    print('请选择相应的药品！右键继续……')
+                    while True:
+                        time.sleep(0.001)
+                        if win32api.GetKeyState(0x02) < 0:
+                            # up = 0 or 1, down = -127 or -128
+                            break
+
+                # 输入其他细节
+                self.input_other_details(one_drug_info, one_row_unit)
+
+                # TODO 判断抗菌药物限制级别
 
                 # 保存抗菌药物
-                mouse_click(rf"{res_path}/image/prescription_image/save_antibacterial.png")
-                mouse_click(rf"{res_path}/image/prescription_image/enter.png")
+                self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
+                self.wait.until(ec.alert_is_present())
+                self.web_driver.switch_to.alert.accept()
                 print(f"输入抗菌药物:{drug_name}")
-        mouse_click(rf"{res_path}/image/prescription_image/return_to_main.png")
+
+        self.goto_main_ui()
         return f'输入抗菌药物{len(antibacterial_list)}个：{antibacterial_list}'
+
+    def input_other_details(self, one_drug_info, one_row_unit):
+        freq_web_list = ['即刻', '1/日', '2/日', '3/日', '4/日', 'q2h', 'q6h', 'q8h', 'q12h', '每晚', '其他']
+        way_web_list = ['静脉滴注', '静脉泵入', '静脉推注', '肌肉注射', '静脉注射', '皮下注射', '球后注射',
+                        '结膜下注射', '眼内注射', '直肠给药', '雾化吸入', '肠道准备',
+                        '口服', '外用', '滴鼻', '滴耳', '滴眼', '鞘内注射', '腹膜透析', '皮试']
+        dose_unit_web_list = ['克', '毫克', '万单位', '滴', 'ml', '片', '支', '粒', '瓶', '包', '袋']
+        freq_dict = {'ONCE': '即刻',
+                     'QD': '1/日',
+                     'BID': '2/日',
+                     'TID': '3/日',
+                     'QID': '4/日',
+                     'Q2H': 'q2h',
+                     'Q6H': 'q6h',
+                     'Q8H': 'q8h',
+                     'Q12H': 'q2h',
+                     'QN': '每晚',
+                     '(空白)': '其他'}
+        way_dict = {'口服': '口服',
+                    '血液透析 ': '腹膜透析',
+                    '外用': '外用',
+                    '肌肉注射': '肌肉注射',
+                    '吸入': '雾化吸入',
+                    '涂眼睑内': '外用',
+                    '滴眼': '滴眼',
+                    '皮下注射(不带费用、耗材）': '皮下注射',
+                    '静脉注射(麻醉科专用)': '静脉注射',
+                    '塞肛': '外用',
+                    '含服': '口服',
+                    '局麻用': '肌肉注射',
+                    '喷喉': '外用'}
+        dose_unit_dict = {'丸': '粒', 'ug': '粒', '吸': '粒', 'ml': 'ml', '片': '片', 'g': '克', '粒': '粒',
+                          'mg': '毫克'}
+
+        try:
+            # 输入抗菌药金额
+            self.web_driver.find_element(By.ID, 'amountOutpatient').send_keys(one_drug_info.get('money'))
+
+            # 输入抗菌药总数量和剂量
+            self.web_driver.find_element(By.ID, 'totalMedicine').send_keys(one_drug_info.get('quantity'))
+            self.web_driver.find_element(By.ID, 'onceMeter').send_keys(one_drug_info.get('dose'))
+
+            # 选择数量单位和剂量单位
+            Select(self.web_driver.find_element(By.ID, "totalMedicineUnit")).select_by_visible_text(one_row_unit)
+            Select(self.web_driver.find_element(By.ID, "onceMeterUnit")).select_by_visible_text(
+                dose_unit_dict.get(one_drug_info.get('doseUnit')))
+
+            # 选择用法（频次）
+            Select(self.web_driver.find_element(By.ID, "medicineFrequency")).select_by_visible_text(
+                freq_dict.get(one_drug_info.get('frequency'), '其他'))
+
+            # 选择给药途径
+            Select(self.web_driver.find_element(By.ID, "medicineWay")).select_by_visible_text(
+                way_dict.get(one_drug_info.get('usage'), '口服'))
+        except Exception as e:
+            print(f'输入抗菌药时出错，报错信息：{e}')
+        print(f'请确认抗菌药输入无误后单击右键继续……')
+        while True:
+            time.sleep(0.001)
+            if win32api.GetKeyState(0x02) < 0:
+                # up = 0 or 1, down = -127 or -128
+                break
+
+    def save_data(self):
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
+        self.wait.until(ec.alert_is_present())
+        self.web_driver.switch_to.alert.accept()
+        print("保存数据")
+        return "保存数据"
+
+    def goto_main_ui(self):
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
 
 
 class JzPrescriptionReport(PrescriptionReport):
-    def input_department_name(self):
-        dep_chinese_name = self.prescription_info.get("department")
-        dep_pic_name = self.dep_dict.get(dep_chinese_name)
-        out_of_range = ['dep_xiaoernei', 'dep_ICU', 'dep_fuchan', 'dep_shenjingnei', 'dep_shenjingwai', 'dep_kouqiang',
-                        'dep_putongnei', 'dep_miniaowai', 'dep_gu', 'dep_puwai']
+    def goto_main_ui(self):
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回急诊处方用药情况调查表"]').click()
 
-        if dep_pic_name == 'dep_jizhen':
-            print(f'选择科室：{dep_chinese_name}')
-        else:
-            mouse_click(rf'{res_path}/image/jizhen_image/dep_image/dep_jizhen.png')
-            print(f"点击：所属科室")
+    def save_data(self):
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存急诊处方用药情况调查表"]').click()  # 单击保存
+        self.wait.until(ec.alert_is_present())
+        self.web_driver.switch_to.alert.accept()
+        print("保存数据")
+        return "保存数据"
 
-            if dep_pic_name in out_of_range:
-                # 向上拖动滚动条
-                mouse_click(rf'{res_path}/image/jizhen_image/scroll_bar.png')
-                pyautogui.dragRel(0, -200, duration=0.2)
-            mouse_click(rf'{res_path}/image/jizhen_image/dep_image/{dep_pic_name}.png')
-        return f'选择科室：{dep_chinese_name}'
+
+if __name__ == '__main__':
+    driver = webdriver.Chrome()  # 启动浏览器
+    wait_time = 60  # 等待网页相应时间
+    driver.implicitly_wait(wait_time)  # 隐式等待
+    wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
+
+    login(driver)
+    # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
+    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
+    file_name = r'门诊处方点评（100张）-20221216上午.xls'
+    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
+    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
+
+    # 实例化处方数据
+    presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
+    # 获取字典
+    dep_dict = database.Prescription.get_dep_dict()
+    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+    # 断点续录
+    record_completed = int(input('已录入记录条数为？'))
+    for one_presc in presc_data[record_completed:]:
+        r = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver, wait)
+        r.do_report()
+    input('录入完成！确认输入Yes')

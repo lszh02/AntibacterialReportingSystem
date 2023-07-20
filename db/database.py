@@ -32,65 +32,6 @@ class Prescription:
         self._drug_data_sheet = drug_data_sheet
         self.dep_dict = self.update_dep_dict()
 
-    @staticmethod
-    def get_dep_dict():
-        try:
-            with open(file=rf'{current_path}\dep_dict.json', mode='r', encoding='utf-8') as f:
-                dep_dict = json.load(f)
-                print(rf'于{current_path}\dep_dict.json成功读取科室字典！')
-                return dep_dict
-        except Exception as e:
-            print('读取科室字典时出错：', e)
-
-    @staticmethod
-    def save_dep_dict(dep_dict):
-        try:
-            with open(file=rf'{current_path}\dep_dict.json', mode='w', encoding='utf-8') as f:
-                json.dump(dep_dict, f, ensure_ascii=False, indent=2)
-                print(rf'已更新科室字典，并保存于{current_path}\dep_dict.json')
-        except Exception as e:
-            print('已更新科室字典，但以json格式保存科室字典时出错：', e)
-
-    def update_dep_dict(self):
-        """(手动）更新科室字典。"""
-        dep_dict = Prescription.get_dep_dict()
-        l1 = len(dep_dict)
-        row_num = 1
-        while row_num < self._prescription_data_sheet.nrows:
-            # 获取Excel表中所有科室名称
-            dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
-            if dep_chinese_name not in dep_dict:
-                dep_pic_name = input(f'{dep_chinese_name}  未关联对应科室字典，请输入"dep_name格式“！')
-                dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
-                print(f"科室字典新增一条：{dep_chinese_name}:{dep_pic_name}")
-                print(f'请截图并命名为{dep_pic_name}.png，存入res/image/menzhen(或jizhen)_image/dep_image文件夹中！点击右键继续')
-                while True:
-                    time.sleep(0.001)
-                    if win32api.GetKeyState(0x02) < 0:
-                        # up = 0 or 1, down = -127 or -128
-                        break
-            row_x = 1
-            while row_num + row_x < self._prescription_data_sheet.nrows:
-                if self._prescription_data_sheet.cell_type(row_num + row_x, 0) == 0:
-                    row_x += 1
-                else:
-                    break
-            row_num += row_x
-
-        l2 = len(dep_dict)
-        if l2 > l1:
-            Prescription.save_dep_dict(dep_dict)
-        else:
-            print('读取科室信息无新增，科室字典无需更新！')
-        return dep_dict
-
-    @staticmethod
-    def get_total_money(drug_info):
-        total_money = 0
-        for drug in drug_info:
-            total_money += drug.get('money')
-        return total_money
-
     def get_prescription_data(self, path=None):
         """
         根据excel表格中的数据提取处方信息，包括行号、处方ID、科室、患者姓名、性别、年龄、诊断、总金额、药品信息等。
@@ -138,6 +79,65 @@ class Prescription:
         else:
             print('已返回处方信息列表')
             return prescription_data
+
+    @staticmethod
+    def save_dep_dict(dep_dict):
+        try:
+            with open(file=rf'{current_path}\dep_dict.json', mode='w', encoding='utf-8') as f:
+                json.dump(dep_dict, f, ensure_ascii=False, indent=2)
+                print(rf'已更新科室字典，并保存于{current_path}\dep_dict.json')
+        except Exception as e:
+            print('已更新科室字典，但以json格式保存科室字典时出错：', e)
+
+    @staticmethod
+    def get_dep_dict():
+        try:
+            with open(file=rf'{current_path}\dep_dict.json', mode='r', encoding='utf-8') as f:
+                dep_dict = json.load(f)
+                print(rf'于{current_path}\dep_dict.json成功读取科室字典！')
+                return dep_dict
+        except Exception as e:
+            print('读取科室字典时出错：', e)
+
+    def update_dep_dict(self):
+        """(手动）更新科室字典。"""
+        dep_dict = Prescription.get_dep_dict()
+        l1 = len(dep_dict)
+        row_num = 1
+        while row_num < self._prescription_data_sheet.nrows:
+            # 获取Excel表中所有科室名称
+            dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
+            if dep_chinese_name not in dep_dict:
+                dep_pic_name = input(f'{dep_chinese_name}  未关联对应科室字典，请输入"dep_name格式“！')
+                dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
+                print(f"科室字典新增一条：{dep_chinese_name}:{dep_pic_name}")
+                print(f'请截图并命名为{dep_pic_name}.png，存入res/image/menzhen(或jizhen)_image/dep_image文件夹中！点击右键继续')
+                while True:
+                    time.sleep(0.001)
+                    if win32api.GetKeyState(0x02) < 0:
+                        # up = 0 or 1, down = -127 or -128
+                        break
+            row_x = 1
+            while row_num + row_x < self._prescription_data_sheet.nrows:
+                if self._prescription_data_sheet.cell_type(row_num + row_x, 0) == 0:
+                    row_x += 1
+                else:
+                    break
+            row_num += row_x
+
+        l2 = len(dep_dict)
+        if l2 > l1:
+            Prescription.save_dep_dict(dep_dict)
+        else:
+            print('读取科室信息无新增，科室字典无需更新！')
+        return dep_dict
+
+    @staticmethod
+    def get_total_money(drug_info):
+        total_money = 0
+        for drug in drug_info:
+            total_money += drug.get('money')
+        return total_money
 
     def _get_diagnosis_info(self, row_num):
         diagnosis_list = []
