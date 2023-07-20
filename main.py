@@ -406,6 +406,7 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         super().__init__()
         self.setupUi(self)
         self.login_button.clicked.connect(self.login)
+        self.main_window = None
 
         # Load saved login info if available
         if os.path.exists('login_info.txt'):
@@ -437,20 +438,18 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         self.login_thread.start()
 
     def login_result(self, success):
-        self.login_button.setEnabled(True)
-        self.login_button.setText("登录")
         if success:
             # Close login window and open main window
             self.close()
             self.main_window = MainWindow(self.login_thread.driver, self.login_thread.driver_wait)
             self.main_window.show()
         else:
+            self.login_button.setEnabled(True)
+            self.login_button.setText("登录")
             reply = QMessageBox.warning(self, "登陆失败", "登陆失败，可能是网络延迟，是否重试？", QMessageBox.Yes | QMessageBox.No,
                                         QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.login()
-            else:
-                self.close()
 
 
 class LoginThread(QThread):
@@ -463,13 +462,14 @@ class LoginThread(QThread):
 
         self.driver = driver
         self.wait_time = wait_time
-        self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
+        self.driver_wait = None  # 显式等待
 
     def run(self):
         if self.driver is None:
             self.driver = webdriver.Chrome()
-            self.driver.implicitly_wait(self.wait_time)  # 隐式等待
-            self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
+
+        self.driver.implicitly_wait(self.wait_time)  # 隐式等待
+        self.driver_wait = WebDriverWait(self.driver, self.wait_time, poll_frequency=0.2)  # 显式等待
 
         try:
             # Use selenium to logining to website
