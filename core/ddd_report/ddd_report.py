@@ -129,6 +129,7 @@ class DDDReport:
         return "保存数据"
 
     def matching_drugs(self, drug_name, drug_specification):
+        # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
         web_drug_rows = self.wait.until(
             ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-drug table tr")))  # 每一行
         # web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
@@ -137,10 +138,25 @@ class DDDReport:
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(2)").text  # 药品网络名称
             one_row_spec = self.web_driver.find_element(By.CSS_SELECTOR,
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(3)").text  # 药品网络规格
-            if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[0] == one_row_spec:
-                self.web_driver.find_element(By.CSS_SELECTOR,
-                                             f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
-                break
+            # 药品名称匹配
+            if self.ddd_drug_dict.get(drug_name) == one_row_name:
+                # 药品规格匹配
+                if drug_specification.split('*')[0] == one_row_spec:
+                    self.web_driver.find_element(By.CSS_SELECTOR,
+                                                 f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                    break
+                # 将药品规格中的'mg'转换成'g'后再匹配
+                elif 'mg' in drug_specification.split('*')[0]:
+                    try:
+                        # mg——>g，此处可能不是数字导致报错。
+                        milligrams_str = drug_specification.split('*')[0][:-2]
+                        if float(milligrams_str) / 1000 == float(one_row_spec.split('g')[0]):
+                            self.web_driver.find_element(By.CSS_SELECTOR,
+                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                            break
+                    except Exception:
+                        pass
+
         else:
             print('请选择相应的药品！右键继续……')
             while True:
@@ -153,14 +169,12 @@ class DDDReport:
 
 if __name__ == '__main__':
     # 打开文件，获取sheet页
-    excel_path = r'D:\JP101个人文件\张思龙\1.药事\抗菌药物监测\2023年'
-    file_name = "2023年第一季度抗菌药物使用明细.xls"
+    excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年'
+    file_name = "2023年第一季度抗菌药物使用明细(1).xls"
     worksheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet2')
 
     # 实例化处方数据
     ddd_data = DDDData(worksheet).get_ddd_data()
-    # 断点续录
-    record_completed = int(input('已录入记录条数为？'))
 
     web_driver = webdriver.Chrome()  # 启动浏览器
     wait_time = 100  # 等待网页相应时间
@@ -177,6 +191,9 @@ if __name__ == '__main__':
     else:
         print('读取登陆文件出错！')
     login(web_driver, account=username_input, pwd=password_input)
+
+    # 断点续录
+    record_completed = int(input('已录入记录条数为？'))
 
     report = DDDReport(ddd_data, record_completed, web_driver, wait)
     report.do_report()

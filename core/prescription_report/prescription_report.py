@@ -234,10 +234,23 @@ class PrescriptionReport:
                                                         "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
                     one_row_unit = one_row.find_element(By.CSS_SELECTOR,
                                                         "#ceng-drug table td:nth-child(4)").text  # 药品网络单位
-                    if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[
-                        0] == one_row_spec:
-                        one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
-                        break
+
+                    # 药品名称匹配
+                    if self.ddd_drug_dict.get(drug_name) == one_row_name:
+                        # 药品规格匹配
+                        if drug_specification.split('*')[0] == one_row_spec:
+                            one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                            break
+                        # 将药品规格中的'mg'转换成'g'后再匹配
+                        elif 'mg' in drug_specification.split('*')[0]:
+                            try:
+                                # mg——>g，此处可能不是数字导致报错。
+                                milligrams_str = drug_specification.split('*')[0][:-2]
+                                if float(milligrams_str) / 1000 == float(one_row_spec.split('g')[0]):
+                                    one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                                    break
+                            except Exception:
+                                pass
                 else:
                     print('请选择相应的药品！右键继续……')
                     while True:
