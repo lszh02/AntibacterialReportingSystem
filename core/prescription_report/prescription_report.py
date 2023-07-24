@@ -10,25 +10,10 @@ from selenium.webdriver.support import expected_conditions as ec
 
 from core.ddd_report.ddd_report import DDDReport
 from db import database
+from core.delete_record.delete import login
 from db.database import read_excel
 
 current_path = os.path.dirname(__file__)
-res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
-
-
-def login(web_driver, url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***'):
-    web_driver.get(url)  # 打开网址
-    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-    print('请手动选择时间和上报模块！完成后单击右键继续……')
-    while True:
-        time.sleep(0.001)
-        if win32api.GetKeyState(0x02) < 0:
-            # up = 0 or 1, down = -127 or -128
-            break
 
 
 class PrescriptionReport:
@@ -366,7 +351,17 @@ if __name__ == '__main__':
     driver.implicitly_wait(wait_time)  # 隐式等待
     wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-    login(driver)
+    # 登录
+    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
+    if os.path.exists(login_info_path):
+        with open(login_info_path, 'r') as f:
+            lines = f.readlines()
+            username_input = lines[0].strip()
+            password_input = lines[1].strip()
+    else:
+        print('读取登陆文件出错！')
+    login(driver, account=username_input, pwd=password_input)
+
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
     excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
     file_name = r'门诊处方点评（100张）-20221216上午.xls'

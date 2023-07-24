@@ -15,7 +15,6 @@ from db.database import read_excel
 
 current_path = os.path.dirname(__file__)
 db_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'db')
-res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 
 class DDDData:
@@ -168,7 +167,16 @@ if __name__ == '__main__':
     web_driver.implicitly_wait(wait_time)  # 隐式等待
     wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-    login(web_driver)
+    # 登录
+    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
+    if os.path.exists(login_info_path):
+        with open(login_info_path, 'r') as f:
+            lines = f.readlines()
+            username_input = lines[0].strip()
+            password_input = lines[1].strip()
+    else:
+        print('读取登陆文件出错！')
+    login(web_driver, account=username_input, pwd=password_input)
 
     report = DDDReport(ddd_data, record_completed, web_driver, wait)
     report.do_report()
