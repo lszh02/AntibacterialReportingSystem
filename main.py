@@ -127,7 +127,7 @@ class DDDReportByUI(DDDReport, QObject):
         # 遍历剩余信息
         for one_info in self.ddd_data[self.start_record:]:
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
-            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
             self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
@@ -135,7 +135,7 @@ class DDDReportByUI(DDDReport, QObject):
             self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
 
             self.start_record += 1
-            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit('')  # 空一行
         self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
         self.finished_sig.emit()
