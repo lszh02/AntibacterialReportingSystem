@@ -146,11 +146,10 @@ class DDDReport:
                                                  f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
                     break
                 # 将药品规格中的'mg'转换成'g'后再匹配
-                elif 'mg' in drug_specification.split('*')[0]:
+                elif 'mg' in drug_specification.split('*')[0] and 'g' in one_row_spec:
                     try:
                         # mg——>g，此处可能不是数字导致报错。
-                        milligrams_str = drug_specification.split('*')[0][:-2]
-                        if float(milligrams_str) / 1000 == float(one_row_spec.split('g')[0]):
+                        if float(drug_specification.split('*')[0][:-2]) / 1000 == float(one_row_spec.split('g')[0]):
                             self.web_driver.find_element(By.CSS_SELECTOR,
                                                          f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
                             break
