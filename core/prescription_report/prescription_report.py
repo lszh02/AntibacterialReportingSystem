@@ -262,7 +262,8 @@ class PrescriptionReport:
                 # 输入其他细节
                 self.input_other_details(one_drug_info, one_row_unit)
 
-                # TODO 判断抗菌药物限制级别
+                # 急诊处方需要判断抗菌药物限制级别
+                self.determine_the_level_of_antimicrobial_restriction(drug_name)
 
                 # 保存抗菌药物
                 self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
@@ -335,6 +336,9 @@ class PrescriptionReport:
                 # up = 0 or 1, down = -127 or -128
                 break
 
+    def determine_the_level_of_antimicrobial_restriction(self, drug_name):
+        pass
+
     def save_data(self):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
         self.wait.until(ec.alert_is_present())
@@ -356,6 +360,25 @@ class JzPrescriptionReport(PrescriptionReport):
         self.web_driver.switch_to.alert.accept()
         print("保存数据")
         return "保存数据"
+
+    def determine_the_level_of_antimicrobial_restriction(self, drug_name):
+        # 制作抗菌药物的限制级和特殊级的字典
+        restricted_grade_antibacterial_drugs = ['头孢克肟', '头孢地尼', '拉氧头孢', '头孢孟多', '头孢他啶', '头孢哌酮',
+                                                '哌拉西林', '莫西沙星', '妥布霉素', '链霉素', '夫西地酸', '依替米星',
+                                                '厄他培南', '伏立康唑', '氟康唑']
+        special_grade_antibacterial_drugs = ['美罗培南', '亚胺培南', '替加环素', '万古霉素', '利奈唑胺', '替考拉宁',
+                                             '两性霉素', '伏立康唑', '卡泊芬净', '泊沙康唑']
+
+        # 通过检索药品名称是否在相应字典之中，进而录入。
+        for i in restricted_grade_antibacterial_drugs:
+            if i in drug_name:
+                self.web_driver.find_element(By.ID, 'yxianzhi').click()
+                break
+
+        for i in special_grade_antibacterial_drugs:
+            if i in drug_name:
+                self.web_driver.find_element(By.ID, 'teshu').click()
+                break
 
 
 if __name__ == '__main__':
