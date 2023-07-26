@@ -140,16 +140,51 @@ class DDDReport:
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(3)").text  # 药品网络规格
             # 药品名称匹配
             if self.ddd_drug_dict.get(drug_name) == one_row_name:
-                # 药品规格匹配
-                if drug_specification.split('*')[0] == one_row_spec:
+
+                local_drug_spec = drug_specification.split('*')[0]
+
+                # 下面多处的切片操作可能出现非预期的结果。
+
+                # 如果本地药品规格为“2ml:0.5mg”格式，则只取质量0.5mg，舍弃体积2ml:
+                if 'ml:' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('ml:')[1]
+                elif 'ml：' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('ml：')[1]
+
+                # 如果本地药品规格为“80mg(8万单位)”格式，则只取质量80mg，舍弃体积(8万单位):
+                if local_drug_spec.endswith(')'):
+                    local_drug_spec = local_drug_spec.split('(')[0]
+
+                # 如果本地药品规格为“2g/支”格式，则只取质量2g，舍弃体积/支:
+                if '/支' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('/支')[0]
+                elif '/袋' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('/袋')[0]
+
+                print('校正后的本地规格为', local_drug_spec)
+
+                # 药品规格完全匹配
+                if local_drug_spec == one_row_spec:
                     self.web_driver.find_element(By.CSS_SELECTOR,
                                                  f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
                     break
+
                 # 将药品规格中的'mg'转换成'g'后再匹配
-                elif 'mg' in drug_specification.split('*')[0] and 'g' in one_row_spec:
+                if 'mg' in local_drug_spec and 'g' in one_row_spec:
                     try:
-                        # mg——>g，此处可能不是数字导致报错。
-                        if float(drug_specification.split('*')[0][:-2]) / 1000 == float(one_row_spec.split('g')[0]):
+                        # mg——>g，此处切片可能导致float()里面不是数字，导致报错。
+                        if float(local_drug_spec[:-2]) / 1000 == float(one_row_spec.split('g')[0]):
+                            self.web_driver.find_element(By.CSS_SELECTOR,
+                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                            break
+                    except Exception:
+                        pass
+
+                # 将药品规格中整型与浮点型统一：如3g和3.0g
+                elif '.0g' in one_row_spec:
+                    try:
+                        # 此处切片可能导致float()里面不是数字，导致报错。
+                        if float(local_drug_spec[:-1]) == float(one_row_spec.split('g')[0]):
                             self.web_driver.find_element(By.CSS_SELECTOR,
                                                          f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
                             break
