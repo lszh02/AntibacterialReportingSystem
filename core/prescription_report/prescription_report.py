@@ -257,6 +257,8 @@ class PrescriptionReport:
                             local_drug_spec = local_drug_spec.split('/支')[0]
                         elif '/袋' in local_drug_spec:
                             local_drug_spec = local_drug_spec.split('/袋')[0]
+                        elif '/瓶' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('/瓶')[0]
 
                         print('校正后的本地规格为', local_drug_spec)
 
