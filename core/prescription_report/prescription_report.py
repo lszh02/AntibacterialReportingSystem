@@ -273,7 +273,7 @@ class PrescriptionReport:
                                 # mg——>g，此处切片可能导致float()里面不是数字，导致报错。
                                 if float(local_drug_spec[:-2]) / 1000 == float(one_row_spec.split('g')[0]):
                                     one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
-                                break
+                                    break
                             except Exception:
                                 pass
 
@@ -434,8 +434,8 @@ if __name__ == '__main__':
     login(driver, account=username_input, pwd=password_input)
 
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
-    file_name = r'门诊处方点评（100张）-20221216上午.xls'
+    excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年\2023年8月'
+    file_name = r'202308门诊下.xls'
     base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
     drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
 
