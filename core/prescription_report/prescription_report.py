@@ -1,3 +1,4 @@
+import json
 import os.path
 
 import time
@@ -28,6 +29,7 @@ class PrescriptionReport:
         self.prescription_info = one_prescription_info
         self.dep_dict = dep_dict
         self.ddd_drug_dict = ddd_drug_dict
+        self.modifying_words = self.get_modifying_words()
         self.web_driver = web_driver
         self.wait = wait
 
@@ -152,10 +154,17 @@ class PrescriptionReport:
         # 诊断可以输入1-5个
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
+
+            # 对诊断进行预处理
             if '癌' in diagnosis:
                 diagnosis = diagnosis.replace('癌', '肿瘤')
             if '泌尿系感染' in diagnosis:
                 diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
+            # 去掉诊断中的前后缀（修饰词）
+            for i in self.modifying_words:
+                if i in diagnosis:
+                    diagnosis = diagnosis.replace(i, '')
+                    continue
 
             self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.web_driver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
@@ -171,7 +180,8 @@ class PrescriptionReport:
                 input_diagnosis_text = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 if input_diagnosis_text != diagnosis:
                     # 将无法与网络系统匹配的诊断导出，以便后续分析。
-                    with open('diagnosis_cant_input.txt', 'a', encoding='utf-8') as f:
+                    with open(os.path.join(os.path.dirname(__file__), r"..\..\db\diagnosis_cant_input.txt"), 'a',
+                              encoding='utf-8') as f:
                         f.write(diagnosis + '>>>' + input_diagnosis_text + '\n')
 
                 for web_diagnosis in web_diagnosis_list:
@@ -383,6 +393,17 @@ class PrescriptionReport:
 
     def goto_main_ui(self):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
+
+    @staticmethod
+    def get_modifying_words():
+        try:
+            # 读取诊断前后缀文件，返回前后缀（两个）列表
+            with open(file=os.path.join(os.path.dirname(__file__), r"..\..\db\modifying_words"), mode='r',
+                      encoding='utf-8') as f:
+                modifying_words = json.load(f)
+                return modifying_words
+        except Exception as e:
+            print('读取诊断前后缀文件时出错：', e)
 
 
 class JzPrescriptionReport(PrescriptionReport):
