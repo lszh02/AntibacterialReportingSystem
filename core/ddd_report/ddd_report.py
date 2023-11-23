@@ -49,15 +49,15 @@ class DDDData:
 class DDDReport:
     def __init__(self, ddd_data, record_completed, web_driver, wait):
         self.ddd_data = ddd_data
-        self.ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+        self.antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
         self.record_completed = record_completed
         self.web_driver = web_driver
         self.wait = wait
 
     @staticmethod
-    def get_ddd_drug_dict():
+    def get_antibacterial_drugs_dict():
         try:
-            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='r', encoding='utf-8') as f:
+            with open(file=rf'{db_path}\antibacterial_drugs_dict.json', mode='r', encoding='utf-8') as f:
                 dep_dict = json.load(f)
                 print('成功读取DDD药品字典！')
                 return dep_dict
@@ -65,11 +65,11 @@ class DDDReport:
             print('打开DDD药品字典时出错：', e)
 
     @staticmethod
-    def update_ddd_drug_dict(ddd_drug_name_dict):
+    def update_antibacterial_drugs_dict(ddd_drug_name_dict):
         try:
-            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='w', encoding='utf-8') as f:
+            with open(file=rf'{db_path}\antibacterial_drugs_dict.json', mode='w', encoding='utf-8') as f:
                 json.dump(ddd_drug_name_dict, f, ensure_ascii=False, indent=2)
-                print(rf'已更新DDD药品字典，并保存于{db_path}\ddd_drug_dict.json')
+                print(rf'已更新DDD药品字典，并保存于{db_path}\antibacterial_drugs_dict.json')
         except Exception as e:
             print('已更新DDD药品字典，但以json格式保存科室字典时出错：', e)
 
@@ -94,8 +94,8 @@ class DDDReport:
         drug_specification = one_drug_info.get('specifications')
         # 输入抗菌药名称
         self.web_driver.find_element(By.ID, 'medicineName').click()
-        if drug_name in self.ddd_drug_dict:
-            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+        if drug_name in self.antibacterial_drugs_dict:
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
             self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
             self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(drug_name)
@@ -103,8 +103,8 @@ class DDDReport:
             print(f'该药品规格为：{drug_specification}')
             value = input(f'请输入{drug_name}在上报系统中的名字——>')
             # 增加一条，更新字典
-            self.ddd_drug_dict[drug_name] = value
-            DDDReport.update_ddd_drug_dict(self.ddd_drug_dict)
+            self.antibacterial_drugs_dict[drug_name] = value
+            DDDReport.update_antibacterial_drugs_dict(self.antibacterial_drugs_dict)
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
         self.matching_drugs(drug_name, drug_specification)
@@ -139,7 +139,7 @@ class DDDReport:
             one_row_spec = self.web_driver.find_element(By.CSS_SELECTOR,
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(3)").text  # 药品网络规格
             # 药品名称匹配
-            if self.ddd_drug_dict.get(drug_name) == one_row_name:
+            if self.antibacterial_drugs_dict.get(drug_name) == one_row_name:
 
                 local_drug_spec = drug_specification.split('*')[0]
 

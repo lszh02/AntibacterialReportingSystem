@@ -18,17 +18,17 @@ current_path = os.path.dirname(__file__)
 
 
 class PrescriptionReport:
-    def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict, web_driver, wait):
+    def __init__(self, one_prescription_info, department_dict, antibacterial_drugs_dict, web_driver, wait):
         """
         传入一条处方信息，科室字典，抗菌药字典和webdriver对象，执行网页自动上报。
         :param one_prescription_info: 一条处方信息
-        :param dep_dict: 科室字典
-        :param ddd_drug_dict: 抗菌药字典
+        :param department_dict: 科室字典
+        :param antibacterial_drugs_dict: 抗菌药字典
         :param web_driver: selenium的webdriver
         """
         self.prescription_info = one_prescription_info
-        self.dep_dict = dep_dict
-        self.ddd_drug_dict = ddd_drug_dict
+        self.department_dict = department_dict
+        self.antibacterial_drugs_dict = antibacterial_drugs_dict
         self.modifying_words = self.get_modifying_words()
         self.web_driver = web_driver
         self.wait = wait
@@ -63,7 +63,7 @@ class PrescriptionReport:
 
     def input_department_name(self):
         # 通过科室字典dep_dict获取科室对应的网络上报名称
-        dep_web_name = self.dep_dict.get(self.prescription_info.get("department"))
+        dep_web_name = self.department_dict.get(self.prescription_info.get("department"))
 
         # 通过Select对象,选中对应科室
         Select(self.web_driver.find_element(By.ID, "department")).select_by_visible_text(dep_web_name)
@@ -210,7 +210,7 @@ class PrescriptionReport:
         drug_list = self.prescription_info.get('drug_info')
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
-            if drug_name in self.ddd_drug_dict:
+            if drug_name in self.antibacterial_drugs_dict:
                 self.web_driver.find_element(By.CSS_SELECTOR,
                                              '#outpatientTable tr:nth-child(2) div:nth-child(2)').click()  # 单击“有”
                 self.web_driver.find_element(By.CSS_SELECTOR,
@@ -226,11 +226,11 @@ class PrescriptionReport:
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
             drug_specification = one_drug_info.get('specifications')
-            if drug_name in self.ddd_drug_dict:
+            if drug_name in self.antibacterial_drugs_dict:
                 antibacterial_list.append(drug_name)
                 # 输入抗菌药名称
                 self.web_driver.find_element(By.ID, 'medicineName').click()
-                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
                 self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
                 # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
@@ -246,7 +246,7 @@ class PrescriptionReport:
                                                         "#ceng-drug table td:nth-child(4)").text  # 药品网络单位
 
                     # 药品名称匹配
-                    if self.ddd_drug_dict.get(drug_name) == one_row_name:
+                    if self.antibacterial_drugs_dict.get(drug_name) == one_row_name:
 
                         local_drug_spec = drug_specification.split('*')[0]
 
@@ -463,11 +463,11 @@ if __name__ == '__main__':
     # 实例化处方数据
     presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
     # 获取字典
-    dep_dict = database.Prescription.get_dep_dict()
-    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+    department_dict = database.Prescription.get_department_dict()
+    antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))
     for one_presc in presc_data[record_completed:]:
-        r = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver, wait)
+        r = PrescriptionReport(one_presc, department_dict, antibacterial_drugs_dict, driver, wait)
         r.do_report()
     input('录入完成！确认输入Yes')

@@ -26,19 +26,19 @@ class PrescriptionUpdateDep(Prescription, QWidget):
         QWidget.__init__(self)
         Prescription.__init__(self, prescription_data_sheet, drug_data_sheet)
 
-    def update_dep_dict(self):
+    def update_department_dict(self):
         print('重写更新科室字典被调用')
-        dep_dict = Prescription.get_dep_dict()
-        l1 = len(dep_dict)
+        department_dict = Prescription.get_department_dict()
+        l1 = len(department_dict)
         row_num = 1
         while row_num < self._prescription_data_sheet.nrows:
             # 获取Excel表中所有科室名称
             dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
-            if dep_chinese_name not in dep_dict:
+            if dep_chinese_name not in department_dict:
                 # 第三个参数表示显示类型，可选，有正常（QLineEdit.Normal）、密碼（ QLineEdit. Password）、不显示（ QLineEdit. NoEcho）三种情况
                 dep_pic_name, ok = QInputDialog.getText(self, "科室字典需更新", f'{dep_chinese_name} 未关联对应字典，请输入:',
                                                         QLineEdit.Normal, "dep_name")
-                dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
+                department_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
 
             row_x = 1
             while row_num + row_x < self._prescription_data_sheet.nrows:
@@ -48,12 +48,12 @@ class PrescriptionUpdateDep(Prescription, QWidget):
                     break
             row_num += row_x
 
-        l2 = len(dep_dict)
+        l2 = len(department_dict)
         if l2 > l1:
-            Prescription.save_dep_dict(dep_dict)
+            Prescription.save_department_dict(department_dict)
         else:
             print('读取科室信息无新增，科室字典无需更新！')
-        return dep_dict
+        return department_dict
 
 
 class PrescriptionReportThread(QThread):
@@ -72,8 +72,8 @@ class PrescriptionReportThread(QThread):
 
     def run(self):
         # 获取科室字典和抗菌药物字典
-        dep_dict = Prescription.get_dep_dict()
-        ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+        dep_dict = Prescription.get_department_dict()
+        ddd_drug_dict = DDDReport.get_antibacterial_drugs_dict()
 
         # 遍历剩余处方信息
         for one_prescription in self.data[self.record_completed:]:
@@ -162,7 +162,7 @@ class DDDReportByUI(DDDReport, QObject):
                 else:
                     # 增加一条，更新字典
                     self.ddd_drug_dict[drug_name] = self.ddd_drug_name
-                    DDDReportByUI.update_ddd_drug_dict(self.ddd_drug_dict)
+                    DDDReportByUI.update_antibacterial_drugs_dict(self.ddd_drug_dict)
                     break
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
