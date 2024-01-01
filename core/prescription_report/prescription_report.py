@@ -161,9 +161,9 @@ class PrescriptionReport:
             if '泌尿系感染' in diagnosis:
                 diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
             # 去掉诊断中的前后缀（修饰词）
-            for i in self.modifying_words:
-                if i in diagnosis:
-                    diagnosis = diagnosis.replace(i, '')
+            for _ in self.modifying_words:
+                if _ in diagnosis:
+                    diagnosis = diagnosis.replace(_, '')
                     continue
 
             self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
@@ -230,7 +230,8 @@ class PrescriptionReport:
                 antibacterial_list.append(drug_name)
                 # 输入抗菌药名称
                 self.web_driver.find_element(By.ID, 'medicineName').click()
-                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
+                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(
+                    self.antibacterial_drugs_dict.get(drug_name))
                 self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
                 # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
@@ -398,10 +399,10 @@ class PrescriptionReport:
     def get_modifying_words():
         try:
             # 读取诊断前后缀文件，返回前后缀（两个）列表
-            with open(file=os.path.join(os.path.dirname(__file__), r"..\..\db\modifying_words"), mode='r',
+            with open(file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "db\modifying_words.json"), mode='r',
                       encoding='utf-8') as f:
                 modifying_words = json.load(f)
-                return modifying_words
+            return modifying_words
         except Exception as e:
             print('读取诊断前后缀文件时出错：', e)
 
