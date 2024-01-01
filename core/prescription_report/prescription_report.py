@@ -155,16 +155,19 @@ class PrescriptionReport:
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
 
-            # 对诊断进行预处理
-            if '癌' in diagnosis:
-                diagnosis = diagnosis.replace('癌', '肿瘤')
-            if '泌尿系感染' in diagnosis:
-                diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
             # 去掉诊断中的前后缀（修饰词）
             for _ in self.modifying_words:
                 if _ in diagnosis:
                     diagnosis = diagnosis.replace(_, '')
                     continue
+
+            # 对诊断进行预处理
+            if '癌' in diagnosis:
+                diagnosis = diagnosis.replace('癌', '肿瘤')
+            if '泌尿系感染' in diagnosis:
+                diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
+            if '肝郁脾虚证' in diagnosis:
+                diagnosis = diagnosis.replace('肝郁脾虚证', '肝病')
 
             self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.web_driver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
