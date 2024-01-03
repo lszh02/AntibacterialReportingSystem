@@ -13,6 +13,7 @@ from core.ddd_report.ddd_report import DDDReport
 from db import database
 from core.delete_record.delete import login
 from db.database import read_excel
+from db.update_modifying_words import update_modifying_words
 
 current_path = os.path.dirname(__file__)
 
@@ -29,7 +30,7 @@ class PrescriptionReport:
         self.prescription_info = one_prescription_info
         self.department_dict = department_dict
         self.antibacterial_drugs_dict = antibacterial_drugs_dict
-        self.modifying_words = self.get_modifying_words()
+        self.modifying_words = update_modifying_words()
         self.web_driver = web_driver
         self.wait = wait
 
@@ -397,17 +398,6 @@ class PrescriptionReport:
 
     def goto_main_ui(self):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
-
-    @staticmethod
-    def get_modifying_words():
-        try:
-            # 读取诊断前后缀文件，返回前后缀（两个）列表
-            with open(file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "db\modifying_words.json"), mode='r',
-                      encoding='utf-8') as f:
-                modifying_words = json.load(f)
-            return modifying_words
-        except Exception as e:
-            print('读取诊断前后缀文件时出错：', e)
 
 
 class JzPrescriptionReport(PrescriptionReport):
