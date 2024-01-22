@@ -73,17 +73,17 @@ class PrescriptionReportThread(QThread):
     def run(self):
         # 获取科室字典和抗菌药物字典
         dep_dict = Prescription.get_department_dict()
-        ddd_drug_dict = DDDReport.get_antibacterial_drugs_dict()
+        antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
 
         # 遍历剩余处方信息
         for one_prescription in self.data[self.record_completed:]:
             self.prescription_sig.emit(one_prescription)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = PrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = JzPrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
 
             self.prescription_progress_sig.emit(
                 '—' * 4 + f"开始填报第{self.record_completed + 1}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
@@ -145,8 +145,8 @@ class DDDReportByUI(DDDReport, QObject):
         drug_specification = one_drug_info.get('specifications')
         # 输入抗菌药名称
         self.web_driver.find_element(By.ID, 'medicineName').click()
-        if drug_name in self.ddd_drug_dict:
-            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+        if drug_name in self.antibacterial_drugs_dict:
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
             self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
             self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(drug_name)
@@ -161,8 +161,8 @@ class DDDReportByUI(DDDReport, QObject):
                     continue
                 else:
                     # 增加一条，更新字典
-                    self.ddd_drug_dict[drug_name] = self.ddd_drug_name
-                    DDDReportByUI.update_antibacterial_drugs_dict(self.ddd_drug_dict)
+                    self.antibacterial_drugs_dict[drug_name] = self.ddd_drug_name
+                    DDDReportByUI.update_antibacterial_drugs_dict(self.antibacterial_drugs_dict)
                     break
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
@@ -216,7 +216,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
-        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\抗菌药物监测\2023年", "全部文件(*.*)")
+        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\3.抗菌药物监测\2024年", "全部文件(*.*)")
         if filename != "":
             self.file_path_text.setText(filename)
 
