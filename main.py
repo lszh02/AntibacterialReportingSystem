@@ -26,19 +26,19 @@ class PrescriptionUpdateDep(Prescription, QWidget):
         QWidget.__init__(self)
         Prescription.__init__(self, prescription_data_sheet, drug_data_sheet)
 
-    def update_dep_dict(self):
+    def update_department_dict(self):
         print('重写更新科室字典被调用')
-        dep_dict = Prescription.get_dep_dict()
-        l1 = len(dep_dict)
+        department_dict = Prescription.get_department_dict()
+        l1 = len(department_dict)
         row_num = 1
         while row_num < self._prescription_data_sheet.nrows:
             # 获取Excel表中所有科室名称
             dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
-            if dep_chinese_name not in dep_dict:
+            if dep_chinese_name not in department_dict:
                 # 第三个参数表示显示类型，可选，有正常（QLineEdit.Normal）、密碼（ QLineEdit. Password）、不显示（ QLineEdit. NoEcho）三种情况
                 dep_pic_name, ok = QInputDialog.getText(self, "科室字典需更新", f'{dep_chinese_name} 未关联对应字典，请输入:',
                                                         QLineEdit.Normal, "dep_name")
-                dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
+                department_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
 
             row_x = 1
             while row_num + row_x < self._prescription_data_sheet.nrows:
@@ -48,12 +48,12 @@ class PrescriptionUpdateDep(Prescription, QWidget):
                     break
             row_num += row_x
 
-        l2 = len(dep_dict)
+        l2 = len(department_dict)
         if l2 > l1:
-            Prescription.save_dep_dict(dep_dict)
+            Prescription.save_department_dict(department_dict)
         else:
             print('读取科室信息无新增，科室字典无需更新！')
-        return dep_dict
+        return department_dict
 
 
 class PrescriptionReportThread(QThread):
@@ -72,18 +72,18 @@ class PrescriptionReportThread(QThread):
 
     def run(self):
         # 获取科室字典和抗菌药物字典
-        dep_dict = Prescription.get_dep_dict()
-        ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+        dep_dict = Prescription.get_department_dict()
+        antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
 
         # 遍历剩余处方信息
         for one_prescription in self.data[self.record_completed:]:
             self.prescription_sig.emit(one_prescription)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = PrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_prescription, dep_dict, ddd_drug_dict, self.web_driver, self.wait)
+                report = JzPrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
 
             self.prescription_progress_sig.emit(
                 '—' * 4 + f"开始填报第{self.record_completed + 1}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
@@ -127,7 +127,7 @@ class DDDReportByUI(DDDReport, QObject):
         # 遍历剩余信息
         for one_info in self.ddd_data[self.start_record:]:
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
-            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
             self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
@@ -135,7 +135,7 @@ class DDDReportByUI(DDDReport, QObject):
             self.ddd_progress_sig.emit("保存数据！")  # 发送信号：进度信息
 
             self.start_record += 1
-            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(f"—————已填报{self.start_record}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit('')  # 空一行
         self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
         self.finished_sig.emit()
@@ -145,8 +145,8 @@ class DDDReportByUI(DDDReport, QObject):
         drug_specification = one_drug_info.get('specifications')
         # 输入抗菌药名称
         self.web_driver.find_element(By.ID, 'medicineName').click()
-        if drug_name in self.ddd_drug_dict:
-            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+        if drug_name in self.antibacterial_drugs_dict:
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
             self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
             self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(drug_name)
@@ -161,8 +161,8 @@ class DDDReportByUI(DDDReport, QObject):
                     continue
                 else:
                     # 增加一条，更新字典
-                    self.ddd_drug_dict[drug_name] = self.ddd_drug_name
-                    DDDReportByUI.update_ddd_drug_dict(self.ddd_drug_dict)
+                    self.antibacterial_drugs_dict[drug_name] = self.ddd_drug_name
+                    DDDReportByUI.update_antibacterial_drugs_dict(self.antibacterial_drugs_dict)
                     break
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
@@ -216,7 +216,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
-        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\抗菌药物监测\2023年", "全部文件(*.*)")
+        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\3.抗菌药物监测\2024年", "全部文件(*.*)")
         if filename != "":
             self.file_path_text.setText(filename)
 

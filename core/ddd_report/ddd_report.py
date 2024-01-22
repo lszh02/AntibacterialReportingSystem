@@ -15,7 +15,6 @@ from db.database import read_excel
 
 current_path = os.path.dirname(__file__)
 db_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'db')
-res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
 
 
 class DDDData:
@@ -50,15 +49,15 @@ class DDDData:
 class DDDReport:
     def __init__(self, ddd_data, record_completed, web_driver, wait):
         self.ddd_data = ddd_data
-        self.ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+        self.antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
         self.record_completed = record_completed
         self.web_driver = web_driver
         self.wait = wait
 
     @staticmethod
-    def get_ddd_drug_dict():
+    def get_antibacterial_drugs_dict():
         try:
-            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='r', encoding='utf-8') as f:
+            with open(file=rf'{db_path}\antibacterial_drugs_dict.json', mode='r', encoding='utf-8') as f:
                 dep_dict = json.load(f)
                 print('成功读取DDD药品字典！')
                 return dep_dict
@@ -66,11 +65,11 @@ class DDDReport:
             print('打开DDD药品字典时出错：', e)
 
     @staticmethod
-    def update_ddd_drug_dict(ddd_drug_name_dict):
+    def update_antibacterial_drugs_dict(ddd_drug_name_dict):
         try:
-            with open(file=rf'{db_path}\ddd_drug_dict.json', mode='w', encoding='utf-8') as f:
+            with open(file=rf'{db_path}\antibacterial_drugs_dict.json', mode='w', encoding='utf-8') as f:
                 json.dump(ddd_drug_name_dict, f, ensure_ascii=False, indent=2)
-                print(rf'已更新DDD药品字典，并保存于{db_path}\ddd_drug_dict.json')
+                print(rf'已更新DDD药品字典，并保存于{db_path}\antibacterial_drugs_dict.json')
         except Exception as e:
             print('已更新DDD药品字典，但以json格式保存科室字典时出错：', e)
 
@@ -95,8 +94,8 @@ class DDDReport:
         drug_specification = one_drug_info.get('specifications')
         # 输入抗菌药名称
         self.web_driver.find_element(By.ID, 'medicineName').click()
-        if drug_name in self.ddd_drug_dict:
-            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+        if drug_name in self.antibacterial_drugs_dict:
+            self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.antibacterial_drugs_dict.get(drug_name))
             self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
         else:
             self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(drug_name)
@@ -104,8 +103,8 @@ class DDDReport:
             print(f'该药品规格为：{drug_specification}')
             value = input(f'请输入{drug_name}在上报系统中的名字——>')
             # 增加一条，更新字典
-            self.ddd_drug_dict[drug_name] = value
-            DDDReport.update_ddd_drug_dict(self.ddd_drug_dict)
+            self.antibacterial_drugs_dict[drug_name] = value
+            DDDReport.update_antibacterial_drugs_dict(self.antibacterial_drugs_dict)
 
         # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
         self.matching_drugs(drug_name, drug_specification)
@@ -130,6 +129,7 @@ class DDDReport:
         return "保存数据"
 
     def matching_drugs(self, drug_name, drug_specification):
+        # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
         web_drug_rows = self.wait.until(
             ec.visibility_of_all_elements_located((By.CSS_SELECTOR, "#ceng-drug table tr")))  # 每一行
         # web_drug_rows = self.web_driver.find_elements(By.CSS_SELECTOR, "#ceng-drug table tr")  # 每一行
@@ -138,10 +138,61 @@ class DDDReport:
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(2)").text  # 药品网络名称
             one_row_spec = self.web_driver.find_element(By.CSS_SELECTOR,
                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(3)").text  # 药品网络规格
-            if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[0] == one_row_spec:
-                self.web_driver.find_element(By.CSS_SELECTOR,
-                                             f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
-                break
+            # 药品名称匹配
+            if self.antibacterial_drugs_dict.get(drug_name) == one_row_name:
+
+                local_drug_spec = drug_specification.split('*')[0]
+
+                # 下面多处的切片操作可能出现非预期的结果。
+
+                # 如果本地药品规格为“2ml:0.5mg”格式，则只取质量0.5mg，舍弃体积2ml:
+                if 'ml:' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('ml:')[1]
+                elif 'ml：' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('ml：')[1]
+
+                # 如果本地药品规格为“80mg(8万单位)”格式，则只取质量80mg，舍弃体积(8万单位):
+                if local_drug_spec.endswith(')'):
+                    local_drug_spec = local_drug_spec.split('(')[0]
+
+                # 如果本地药品规格为“2g/支”格式，则只取质量2g，舍弃体积/支:
+                if '/支' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('/支')[0]
+                elif '/袋' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('/袋')[0]
+                elif '/瓶' in local_drug_spec:
+                    local_drug_spec = local_drug_spec.split('/瓶')[0]
+
+                print('校正后的本地规格为', local_drug_spec)
+
+                # 药品规格完全匹配
+                if local_drug_spec == one_row_spec:
+                    self.web_driver.find_element(By.CSS_SELECTOR,
+                                                 f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                    break
+
+                # 将药品规格中的'mg'转换成'g'后再匹配
+                if 'mg' in local_drug_spec and 'g' in one_row_spec:
+                    try:
+                        # mg——>g，此处切片可能导致float()里面不是数字，导致报错。
+                        if float(local_drug_spec[:-2]) / 1000 == float(one_row_spec.split('g')[0]):
+                            self.web_driver.find_element(By.CSS_SELECTOR,
+                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                            break
+                    except Exception:
+                        pass
+
+                # 将药品规格中整型与浮点型统一：如3g和3.0g
+                elif '.0g' in one_row_spec:
+                    try:
+                        # 此处切片可能导致float()里面不是数字，导致报错。
+                        if float(local_drug_spec[:-1]) == float(one_row_spec.split('g')[0]):
+                            self.web_driver.find_element(By.CSS_SELECTOR,
+                                                         f"#ceng-drug table tr:nth-child({i + 1}) td:nth-child(6) a").click()
+                            break
+                    except Exception:
+                        pass
+
         else:
             print('请选择相应的药品！右键继续……')
             while True:
@@ -154,21 +205,31 @@ class DDDReport:
 
 if __name__ == '__main__':
     # 打开文件，获取sheet页
-    excel_path = r'D:\JP101个人文件\张思龙\1.药事\抗菌药物监测\2023年'
-    file_name = "2023年第一季度抗菌药物使用明细.xls"
+    excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年'
+    file_name = "2023年第一季度抗菌药物使用明细(1).xls"
     worksheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet2')
 
     # 实例化处方数据
     ddd_data = DDDData(worksheet).get_ddd_data()
-    # 断点续录
-    record_completed = int(input('已录入记录条数为？'))
 
     web_driver = webdriver.Chrome()  # 启动浏览器
     wait_time = 100  # 等待网页相应时间
     web_driver.implicitly_wait(wait_time)  # 隐式等待
     wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-    login(web_driver)
+    # 登录
+    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
+    if os.path.exists(login_info_path):
+        with open(login_info_path, 'r') as f:
+            lines = f.readlines()
+            username_input = lines[0].strip()
+            password_input = lines[1].strip()
+    else:
+        print('读取登陆文件出错！')
+    login(web_driver, account=username_input, pwd=password_input)
+
+    # 断点续录
+    record_completed = int(input('已录入记录条数为？'))
 
     report = DDDReport(ddd_data, record_completed, web_driver, wait)
     report.do_report()

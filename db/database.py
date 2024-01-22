@@ -30,7 +30,7 @@ class Prescription:
         """
         self._prescription_data_sheet = prescription_data_sheet
         self._drug_data_sheet = drug_data_sheet
-        self.dep_dict = self.update_dep_dict()
+        self.department_dict = self.update_department_dict()
 
     def get_prescription_data(self, path=None):
         """
@@ -81,35 +81,35 @@ class Prescription:
             return prescription_data
 
     @staticmethod
-    def save_dep_dict(dep_dict):
+    def save_department_dict(department_dict):
         try:
-            with open(file=rf'{current_path}\dep_dict.json', mode='w', encoding='utf-8') as f:
-                json.dump(dep_dict, f, ensure_ascii=False, indent=2)
-                print(rf'已更新科室字典，并保存于{current_path}\dep_dict.json')
+            with open(file=rf'{current_path}\department_dict.json', mode='w', encoding='utf-8') as f:
+                json.dump(department_dict, f, ensure_ascii=False, indent=2)
+                print(rf'已更新科室字典，并保存于{current_path}\department_dict.json')
         except Exception as e:
             print('已更新科室字典，但以json格式保存科室字典时出错：', e)
 
     @staticmethod
-    def get_dep_dict():
+    def get_department_dict():
         try:
-            with open(file=rf'{current_path}\dep_dict.json', mode='r', encoding='utf-8') as f:
+            with open(file=rf'{current_path}\department_dict.json', mode='r', encoding='utf-8') as f:
                 dep_dict = json.load(f)
-                print(rf'于{current_path}\dep_dict.json成功读取科室字典！')
+                print(rf'于{current_path}\department_dict.json成功读取科室字典！')
                 return dep_dict
         except Exception as e:
             print('读取科室字典时出错：', e)
 
-    def update_dep_dict(self):
+    def update_department_dict(self):
         """(手动）更新科室字典。"""
-        dep_dict = Prescription.get_dep_dict()
-        l1 = len(dep_dict)
+        department_dict = Prescription.get_department_dict()
+        l1 = len(department_dict)
         row_num = 1
         while row_num < self._prescription_data_sheet.nrows:
             # 获取Excel表中所有科室名称
             dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
-            if dep_chinese_name not in dep_dict:
+            if dep_chinese_name not in department_dict:
                 dep_pic_name = input(f'{dep_chinese_name}  未关联对应科室字典，请输入"dep_name格式“！')
-                dep_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
+                department_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
                 print(f"科室字典新增一条：{dep_chinese_name}:{dep_pic_name}")
                 print(f'请截图并命名为{dep_pic_name}.png，存入res/image/menzhen(或jizhen)_image/dep_image文件夹中！点击右键继续')
                 while True:
@@ -125,12 +125,12 @@ class Prescription:
                     break
             row_num += row_x
 
-        l2 = len(dep_dict)
+        l2 = len(department_dict)
         if l2 > l1:
-            Prescription.save_dep_dict(dep_dict)
+            Prescription.save_department_dict(department_dict)
         else:
             print('读取科室信息无新增，科室字典无需更新！')
-        return dep_dict
+        return department_dict
 
     @staticmethod
     def get_total_money(drug_info):
@@ -226,7 +226,7 @@ class Prescription:
                     break
 
         # 如果科室为妇产科，则性别为女
-        if self.dep_dict.get(department) == 'dep_fuchan':
+        if self.department_dict.get(department) == 'dep_fuchan':
             gender = "woman"
         return gender
 

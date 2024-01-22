@@ -1,3 +1,4 @@
+import json
 import os.path
 
 import time
@@ -10,39 +11,26 @@ from selenium.webdriver.support import expected_conditions as ec
 
 from core.ddd_report.ddd_report import DDDReport
 from db import database
+from core.delete_record.delete import login
 from db.database import read_excel
+from db.update_modifying_words import update_modifying_words
 
 current_path = os.path.dirname(__file__)
-res_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'res')
-
-
-def login(web_driver, url="http://y.chinadtc.org.cn/login", account='440306311001', pwd='NYDyjk233***'):
-    web_driver.get(url)  # 打开网址
-    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-    print('请手动选择时间和上报模块！完成后单击右键继续……')
-    while True:
-        time.sleep(0.001)
-        if win32api.GetKeyState(0x02) < 0:
-            # up = 0 or 1, down = -127 or -128
-            break
 
 
 class PrescriptionReport:
-    def __init__(self, one_prescription_info, dep_dict, ddd_drug_dict, web_driver, wait):
+    def __init__(self, one_prescription_info, department_dict, antibacterial_drugs_dict, web_driver, wait):
         """
         传入一条处方信息，科室字典，抗菌药字典和webdriver对象，执行网页自动上报。
         :param one_prescription_info: 一条处方信息
-        :param dep_dict: 科室字典
-        :param ddd_drug_dict: 抗菌药字典
+        :param department_dict: 科室字典
+        :param antibacterial_drugs_dict: 抗菌药字典
         :param web_driver: selenium的webdriver
         """
         self.prescription_info = one_prescription_info
-        self.dep_dict = dep_dict
-        self.ddd_drug_dict = ddd_drug_dict
+        self.department_dict = department_dict
+        self.antibacterial_drugs_dict = antibacterial_drugs_dict
+        self.modifying_words = update_modifying_words()
         self.web_driver = web_driver
         self.wait = wait
 
@@ -76,7 +64,7 @@ class PrescriptionReport:
 
     def input_department_name(self):
         # 通过科室字典dep_dict获取科室对应的网络上报名称
-        dep_web_name = self.dep_dict.get(self.prescription_info.get("department"))
+        dep_web_name = self.department_dict.get(self.prescription_info.get("department"))
 
         # 通过Select对象,选中对应科室
         Select(self.web_driver.find_element(By.ID, "department")).select_by_visible_text(dep_web_name)
@@ -167,10 +155,20 @@ class PrescriptionReport:
         # 诊断可以输入1-5个
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
+
+            # 去掉诊断中的前后缀（修饰词）
+            for _ in self.modifying_words:
+                if _ in diagnosis:
+                    diagnosis = diagnosis.replace(_, '')
+                    continue
+
+            # 对诊断进行预处理
             if '癌' in diagnosis:
                 diagnosis = diagnosis.replace('癌', '肿瘤')
             if '泌尿系感染' in diagnosis:
                 diagnosis = diagnosis.replace('泌尿系感染', '泌尿道感染')
+            if '肝郁脾虚证' in diagnosis:
+                diagnosis = diagnosis.replace('肝郁脾虚证', '肝病')
 
             self.web_driver.find_element(By.ID, 'diagnosisName' + f'{i + 1}').click()
             self.web_driver.find_element(By.ID, 'searchDiagnosis').send_keys(diagnosis)
@@ -186,7 +184,8 @@ class PrescriptionReport:
                 input_diagnosis_text = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 if input_diagnosis_text != diagnosis:
                     # 将无法与网络系统匹配的诊断导出，以便后续分析。
-                    with open('diagnosis_cant_input.txt', 'a', encoding='utf-8') as f:
+                    with open(os.path.join(os.path.dirname(__file__), r"..\..\db\diagnosis_cant_input.txt"), 'a',
+                              encoding='utf-8') as f:
                         f.write(diagnosis + '>>>' + input_diagnosis_text + '\n')
 
                 for web_diagnosis in web_diagnosis_list:
@@ -215,7 +214,7 @@ class PrescriptionReport:
         drug_list = self.prescription_info.get('drug_info')
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
-            if drug_name in self.ddd_drug_dict:
+            if drug_name in self.antibacterial_drugs_dict:
                 self.web_driver.find_element(By.CSS_SELECTOR,
                                              '#outpatientTable tr:nth-child(2) div:nth-child(2)').click()  # 单击“有”
                 self.web_driver.find_element(By.CSS_SELECTOR,
@@ -231,11 +230,12 @@ class PrescriptionReport:
         for one_drug_info in drug_list:
             drug_name = one_drug_info.get('drug_name')
             drug_specification = one_drug_info.get('specifications')
-            if drug_name in self.ddd_drug_dict:
+            if drug_name in self.antibacterial_drugs_dict:
                 antibacterial_list.append(drug_name)
                 # 输入抗菌药名称
                 self.web_driver.find_element(By.ID, 'medicineName').click()
-                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(self.ddd_drug_dict.get(drug_name))
+                self.web_driver.find_element(By.ID, 'searchDrugs').send_keys(
+                    self.antibacterial_drugs_dict.get(drug_name))
                 self.web_driver.find_element(By.CSS_SELECTOR, '#searchDrugs+input[value="查询"]').click()
 
                 # 获取网络抗菌药物列表，与输入的药品进行匹配（名称、规格）
@@ -249,10 +249,58 @@ class PrescriptionReport:
                                                         "#ceng-drug table td:nth-child(3)").text  # 药品网络规格
                     one_row_unit = one_row.find_element(By.CSS_SELECTOR,
                                                         "#ceng-drug table td:nth-child(4)").text  # 药品网络单位
-                    if self.ddd_drug_dict.get(drug_name) == one_row_name and drug_specification.split('*')[
-                        0] == one_row_spec:
-                        one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
-                        break
+
+                    # 药品名称匹配
+                    if self.antibacterial_drugs_dict.get(drug_name) == one_row_name:
+
+                        local_drug_spec = drug_specification.split('*')[0]
+
+                        # 下面多处的切片操作可能出现非预期的结果。
+
+                        # 如果本地药品规格为“2ml:0.5mg”格式，则只取质量0.5mg，舍弃体积2ml:
+                        if 'ml:' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('ml:')[1]
+                        elif 'ml：' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('ml：')[1]
+
+                        # 如果本地药品规格为“80mg(8万单位)”格式，则只取质量80mg，舍弃体积(8万单位):
+                        if local_drug_spec.endswith(')'):
+                            local_drug_spec = local_drug_spec.split('(')[0]
+
+                        # 如果本地药品规格为“2g/支”格式，则只取质量2g，舍弃体积/支:
+                        if '/支' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('/支')[0]
+                        elif '/袋' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('/袋')[0]
+                        elif '/瓶' in local_drug_spec:
+                            local_drug_spec = local_drug_spec.split('/瓶')[0]
+
+                        print('校正后的本地规格为', local_drug_spec)
+
+                        # 药品规格完全匹配
+                        if local_drug_spec == one_row_spec:
+                            one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                            break
+
+                        # 将药品规格中的'mg'转换成'g'后再匹配
+                        if 'mg' in local_drug_spec and 'g' in one_row_spec:
+                            try:
+                                # mg——>g，此处切片可能导致float()里面不是数字，导致报错。
+                                if float(local_drug_spec[:-2]) / 1000 == float(one_row_spec.split('g')[0]):
+                                    one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                                    break
+                            except Exception:
+                                pass
+
+                        # 将药品规格中整型与浮点型统一：如3g和3.0g
+                        elif '.0g' in one_row_spec:
+                            try:
+                                # 此处切片可能导致float()里面不是数字，导致报错。
+                                if float(local_drug_spec[:-1]) == float(one_row_spec.split('g')[0]):
+                                    one_row.find_element(By.CSS_SELECTOR, "#ceng-drug table td:nth-child(6) a").click()
+                                    break
+                            except Exception:
+                                pass
                 else:
                     print('请选择相应的药品！右键继续……')
                     while True:
@@ -264,7 +312,8 @@ class PrescriptionReport:
                 # 输入其他细节
                 self.input_other_details(one_drug_info, one_row_unit)
 
-                # TODO 判断抗菌药物限制级别
+                # 急诊处方需要判断抗菌药物限制级别
+                self.determine_the_level_of_antimicrobial_restriction(drug_name)
 
                 # 保存抗菌药物
                 self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存抗菌药详细信息录入"]').click()
@@ -337,6 +386,9 @@ class PrescriptionReport:
                 # up = 0 or 1, down = -127 or -128
                 break
 
+    def determine_the_level_of_antimicrobial_restriction(self, drug_name):
+        pass
+
     def save_data(self):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
         self.wait.until(ec.alert_is_present())
@@ -359,6 +411,25 @@ class JzPrescriptionReport(PrescriptionReport):
         print("保存数据")
         return "保存数据"
 
+    def determine_the_level_of_antimicrobial_restriction(self, drug_name):
+        # 制作抗菌药物的限制级和特殊级的字典
+        restricted_grade_antibacterial_drugs = ['头孢克肟', '头孢地尼', '拉氧头孢', '头孢孟多', '头孢他啶', '头孢哌酮',
+                                                '哌拉西林', '莫西沙星', '妥布霉素', '链霉素', '夫西地酸', '依替米星',
+                                                '厄他培南', '伏立康唑', '氟康唑']
+        special_grade_antibacterial_drugs = ['美罗培南', '亚胺培南', '替加环素', '万古霉素', '利奈唑胺', '替考拉宁',
+                                             '两性霉素', '伏立康唑', '卡泊芬净', '泊沙康唑']
+
+        # 通过检索药品名称是否在相应字典之中，进而录入。
+        for i in restricted_grade_antibacterial_drugs:
+            if i in drug_name:
+                self.web_driver.find_element(By.ID, 'yxianzhi').click()
+                break
+
+        for i in special_grade_antibacterial_drugs:
+            if i in drug_name:
+                self.web_driver.find_element(By.ID, 'teshu').click()
+                break
+
 
 if __name__ == '__main__':
     driver = webdriver.Chrome()  # 启动浏览器
@@ -366,21 +437,31 @@ if __name__ == '__main__':
     driver.implicitly_wait(wait_time)  # 隐式等待
     wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
-    login(driver)
+    # 登录
+    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
+    if os.path.exists(login_info_path):
+        with open(login_info_path, 'r') as f:
+            lines = f.readlines()
+            username_input = lines[0].strip()
+            password_input = lines[1].strip()
+    else:
+        print('读取登陆文件出错！')
+    login(driver, account=username_input, pwd=password_input)
+
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\药事\抗菌药物监测\2022年\2022年12月'
-    file_name = r'门诊处方点评（100张）-20221216上午.xls'
+    excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年\2023年8月'
+    file_name = r'202308门诊下.xls'
     base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
     drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
 
     # 实例化处方数据
     presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
     # 获取字典
-    dep_dict = database.Prescription.get_dep_dict()
-    ddd_drug_dict = DDDReport.get_ddd_drug_dict()
+    department_dict = database.Prescription.get_department_dict()
+    antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))
     for one_presc in presc_data[record_completed:]:
-        r = PrescriptionReport(one_presc, dep_dict, ddd_drug_dict, driver, wait)
+        r = PrescriptionReport(one_presc, department_dict, antibacterial_drugs_dict, driver, wait)
         r.do_report()
     input('录入完成！确认输入Yes')
