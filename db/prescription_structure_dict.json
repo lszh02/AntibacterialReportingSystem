@@ -1,0 +1,11 @@
+{
+  "prescription_id": "处方号",
+  "department": "科室",
+  "age": "年龄",
+  "gender": "性别",
+  "total_money": "处方药品金额",
+  "quantity_of_drugs": "药品品种数",
+  "quantity_of_injection": "注射剂种数",
+  "diagnosis": "诊断",
+  "drugs_info": ""
+}

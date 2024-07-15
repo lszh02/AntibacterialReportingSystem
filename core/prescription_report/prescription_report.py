@@ -106,11 +106,11 @@ class PrescriptionReport:
 
     def input_gender(self):
         gender = self.prescription_info.get("gender")
-        if gender == 'man':
+        if gender == 'man' or gender == '男':
             self.web_driver.find_element(By.ID, 'sexM').click()  # 'sexM'为男
             print(f"选择性别：男")
             return f"选择性别：男"
-        elif gender == 'woman':
+        elif gender == 'woman' or gender == '女':
             self.web_driver.find_element(By.ID, 'sexW').click()  # 'sexW'为女
             print(f"选择性别：女")
             return f"选择性别：女"
@@ -120,6 +120,7 @@ class PrescriptionReport:
         self.web_driver.find_element(By.ID, 'outAmount').clear()  # 清除输入框数据
         self.web_driver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
         if money > 10000:
+            # fixme 金额大于10000时会弹窗提醒，需要点击别处后再点接受
             self.wait.until(ec.alert_is_present())
             self.web_driver.switch_to.alert.accept()
 
@@ -127,20 +128,15 @@ class PrescriptionReport:
         return f'输入处方金额:{round(money, 2)}'
 
     def input_quantity_of_drugs(self):
-        drugs_count = len(self.prescription_info.get("drug_info"))
+        drugs_count = self.prescription_info.get("quantity_of_drugs")
         self.web_driver.find_element(By.ID, 'outDrugs').clear()  # 清除输入框数据
         self.web_driver.find_element(By.ID, 'outDrugs').send_keys(drugs_count)
         print(f'输入药品数量:{drugs_count}')
         return f'输入药品数量:{drugs_count}'
 
     def injection_or_not(self):
-        inj_count = 0
-        for drug in self.prescription_info.get('drug_info'):
-            for i in ['注射', '狂犬病疫苗', '破伤风']:
-                if i in drug.get('drug_name'):
-                    inj_count += 1
-                    break
-        if inj_count != 0:
+        inj_count = self.prescription_info.get("quantity_of_injection")
+        if inj_count != 0 and inj_count != '' and inj_count is not None:
             self.web_driver.find_element(By.ID, 'infusionY').click()
             self.web_driver.find_element(By.ID, 'infusionNum').clear()  # 清除输入框数据
             self.web_driver.find_element(By.ID, 'infusionNum').send_keys(inj_count)
@@ -151,7 +147,8 @@ class PrescriptionReport:
             return '该处方中无注射剂'
 
     def input_diagnosis(self):
-        diagnosis_list = self.prescription_info.get("diagnosis")
+        diagnosis_list = self.prescription_info.get("diagnosis").split()
+        print(diagnosis_list)
         # 诊断可以输入1-5个
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
@@ -449,10 +446,10 @@ if __name__ == '__main__':
     login(driver, account=username_input, pwd=password_input)
 
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
-    excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年\2023年8月'
-    file_name = r'202308门诊下.xls'
-    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet3')
-    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet4')
+    excel_path = r'"C:\Users\long\Desktop'
+    file_name = r'莫药师报表1.xls"'
+    base_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet1')
+    drug_sheet = read_excel(rf"{excel_path}\{file_name}", 'Sheet2')
 
     # 实例化处方数据
     presc_data = database.Prescription(base_sheet, drug_sheet).get_prescription_data()
