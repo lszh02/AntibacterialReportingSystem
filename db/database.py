@@ -41,7 +41,7 @@ class Prescription:
         self.prescription_base_data_sheet = prescription_base_data_sheet
         self.prescription_drug_data_sheet = prescription_drug_data_sheet
         self.department_dict = self.get_department_dict()
-        # self.department_dict = self.update_department_dict()
+        self.department_dict = self.update_department_dict()
 
     def get_prescription_data(self):
         """

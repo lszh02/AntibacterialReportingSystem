@@ -39,7 +39,7 @@ class PrescriptionUpdateDep(Prescription, QWidget):
                 # 第三个参数表示显示类型，可选，有正常（QLineEdit.Normal）、密碼（ QLineEdit. Password）、不显示（ QLineEdit. NoEcho）三种情况
                 dep_web_name, ok = QInputDialog.getText(self, "科室字典需更新",
                                                         f'{dep_excel_name} 未关联对应字典，请输入:',
-                                                        QLineEdit.Normal, "dep_name")
+                                                        QLineEdit.Normal, "抗网上对应的科室名")
                 department_dict[dep_excel_name] = dep_web_name  # 增加一条，更新字典
 
             row_num += 1
