@@ -10,8 +10,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from core.delete_record.delete import login
 from db.database import read_excel
+from db.login import login
 
 current_path = os.path.dirname(__file__)
 db_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'db')
@@ -218,15 +218,7 @@ if __name__ == '__main__':
     wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
 
     # 登录
-    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
-    if os.path.exists(login_info_path):
-        with open(login_info_path, 'r') as f:
-            lines = f.readlines()
-            username_input = lines[0].strip()
-            password_input = lines[1].strip()
-    else:
-        print('读取登陆文件出错！')
-    login(web_driver, account=username_input, pwd=password_input)
+    login(web_driver)
 
     # 断点续录
     record_completed = int(input('已录入记录条数为？'))

@@ -1,28 +1,13 @@
 import os
-import time
 
-import win32api
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+from db.login import login
+
 current_path = os.path.dirname(__file__)
-
-
-def login(web_driver, url="http://y.chinadtc.org.cn/login", account=None, pwd=None):
-    web_driver.get(url)  # 打开网址
-    web_driver.find_element(By.CSS_SELECTOR, "#account").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
-    web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
-    print('请手动选择时间和上报模块！完成后单击右键继续……')
-    while True:
-        time.sleep(0.001)
-        if win32api.GetKeyState(0x02) < 0:
-            # up = 0 or 1, down = -127 or -128
-            break
 
 
 def delete_record(del_num, web_driver):
@@ -56,15 +41,7 @@ if __name__ == '__main__':
     wait = WebDriverWait(web_driver, wait_time, poll_frequency=0.2)  # 显式等待
 
     # 登录
-    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
-    if os.path.exists(login_info_path):
-        with open(login_info_path, 'r') as f:
-            lines = f.readlines()
-            username_input = lines[0].strip()
-            password_input = lines[1].strip()
-    else:
-        print('读取登陆文件出错！')
-    login(web_driver, account=username_input, pwd=password_input)
+    login(web_driver)
 
     input_text = input('需要删除多少条记录？————>')
     delete_record(int(input_text), web_driver)

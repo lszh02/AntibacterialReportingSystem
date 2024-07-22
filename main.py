@@ -14,6 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+from config import login_info_path
 from core.ddd_report.ddd_report import DDDData, DDDReport
 from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport
 from db.database import read_excel, Prescription
@@ -407,10 +408,11 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         self.setupUi(self)
         self.login_button.clicked.connect(self.login)
         self.main_window = None
+        self.login_file_path = login_info_path
 
         # Load saved login info if available
-        if os.path.exists('login_info.txt'):
-            with open('login_info.txt', 'r') as f:
+        if os.path.exists(self.login_file_path):
+            with open(self.login_file_path, 'r') as f:
                 lines = f.readlines()
                 self.username_input.setText(lines[0].strip())
                 self.password_input.setText(lines[1].strip())
@@ -424,13 +426,13 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
 
         # Save username and password if remember me is checked
         if self.remember_checkbox.isChecked():
-            with open('login_info.txt', 'w') as f:
+            with open(self.login_file_path, 'w') as f:
                 f.write(username + '\n')
                 f.write(password)
         else:
             # Remove saved login info
-            if os.path.exists('login_info.txt'):
-                os.remove('login_info.txt')
+            if os.path.exists(self.login_file_path):
+                os.remove(self.login_file_path)
 
         # Start login thread
         self.login_thread = LoginThread(username, password)

@@ -1,4 +1,3 @@
-import json
 import os.path
 
 import time
@@ -9,10 +8,11 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+from config import dose_unit_dict, freq_dict, way_dict
 from core.ddd_report.ddd_report import DDDReport
 from db import database
-from core.delete_record.delete import login
 from db.database import read_excel
+from db.login import login
 from db.update_modifying_words import update_modifying_words
 
 current_path = os.path.dirname(__file__)
@@ -325,38 +325,6 @@ class PrescriptionReport:
         return f'输入抗菌药物{len(antibacterial_list)}个：{antibacterial_list}'
 
     def input_other_details(self, one_drug_info, one_row_unit):
-        freq_web_list = ['即刻', '1/日', '2/日', '3/日', '4/日', 'q2h', 'q6h', 'q8h', 'q12h', '每晚', '其他']
-        way_web_list = ['静脉滴注', '静脉泵入', '静脉推注', '肌肉注射', '静脉注射', '皮下注射', '球后注射',
-                        '结膜下注射', '眼内注射', '直肠给药', '雾化吸入', '肠道准备',
-                        '口服', '外用', '滴鼻', '滴耳', '滴眼', '鞘内注射', '腹膜透析', '皮试']
-        dose_unit_web_list = ['克', '毫克', '万单位', '滴', 'ml', '片', '支', '粒', '瓶', '包', '袋']
-        freq_dict = {'ONCE': '即刻',
-                     'QD': '1/日',
-                     'BID': '2/日',
-                     'TID': '3/日',
-                     'QID': '4/日',
-                     'Q2H': 'q2h',
-                     'Q6H': 'q6h',
-                     'Q8H': 'q8h',
-                     'Q12H': 'q2h',
-                     'QN': '每晚',
-                     '(空白)': '其他'}
-        way_dict = {'口服': '口服',
-                    '血液透析 ': '腹膜透析',
-                    '外用': '外用',
-                    '肌肉注射': '肌肉注射',
-                    '吸入': '雾化吸入',
-                    '涂眼睑内': '外用',
-                    '滴眼': '滴眼',
-                    '皮下注射(不带费用、耗材）': '皮下注射',
-                    '静脉注射(麻醉科专用)': '静脉注射',
-                    '塞肛': '外用',
-                    '含服': '口服',
-                    '局麻用': '肌肉注射',
-                    '喷喉': '外用'}
-        dose_unit_dict = {'丸': '粒', 'ug': '粒', '吸': '粒', 'ml': 'ml', '片': '片', 'g': '克', '粒': '粒',
-                          'mg': '毫克'}
-
         try:
             # 输入抗菌药金额
             self.web_driver.find_element(By.ID, 'amountOutpatient').send_keys(one_drug_info.get('money'))
@@ -438,15 +406,7 @@ if __name__ == '__main__':
     wait = WebDriverWait(driver, wait_time, poll_frequency=0.2)  # 显式等待
 
     # 登录
-    login_info_path = os.path.join(os.path.join(os.path.dirname(__file__), '../..'), 'login_info.txt')
-    if os.path.exists(login_info_path):
-        with open(login_info_path, 'r') as f:
-            lines = f.readlines()
-            username_input = lines[0].strip()
-            password_input = lines[1].strip()
-    else:
-        print('读取登陆文件出错！')
-    login(driver, account=username_input, pwd=password_input)
+    login(driver)
 
     # 打开excel文件，从sheet4获取处方基本信息，从sheet5获取处方药品信息
     excel_path = r'D:\张思龙\1.药事\抗菌药物监测\2023年\2023年8月'
