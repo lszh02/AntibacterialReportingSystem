@@ -14,7 +14,7 @@ from db.database import read_excel
 from db.login import login
 
 current_path = os.path.dirname(__file__)
-db_path = os.path.join(os.path.abspath(os.path.join(current_path, '../..')), 'db')
+db_path = os.path.join(os.path.abspath(os.path.join(current_path, '..')), 'db')
 
 
 class DDDData:

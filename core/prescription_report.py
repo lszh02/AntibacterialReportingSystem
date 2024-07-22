@@ -9,7 +9,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
 from config import dose_unit_dict, freq_dict, way_dict
-from core.ddd_report.ddd_report import DDDReport
+from core.ddd_report import DDDReport
 from db import database
 from db.database import read_excel
 from db.login import login
@@ -184,7 +184,7 @@ class PrescriptionReport:
                 input_diagnosis_text = self.web_driver.find_element(By.ID, 'searchDiagnosis').get_attribute('value')
                 if input_diagnosis_text != diagnosis:
                     # 将无法与网络系统匹配的诊断导出，以便后续分析。
-                    with open(os.path.join(os.path.dirname(__file__), r"..\..\db\diagnosis_cant_input.txt"), 'a',
+                    with open(os.path.join(os.path.dirname(__file__), r"../db/diagnosis_cant_input.txt"), 'a',
                               encoding='utf-8') as f:
                         f.write(diagnosis + '>>>' + input_diagnosis_text + '\n')
 

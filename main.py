@@ -15,8 +15,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
 from config import login_info_path
-from core.ddd_report.ddd_report import DDDData, DDDReport
-from core.prescription_report.prescription_report import PrescriptionReport, JzPrescriptionReport
+from core.ddd_report import DDDData, DDDReport
+from core.prescription_report import PrescriptionReport, JzPrescriptionReport
 from db.database import read_excel, Prescription
 from res.UI.MainWindow import Ui_MainWindow
 from res.UI.LoginWindow import Ui_LoginWindow

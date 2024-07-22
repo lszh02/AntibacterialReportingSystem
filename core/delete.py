@@ -16,12 +16,12 @@ def delete_record(del_num, web_driver):
             # 每删除100条记录需点击“下一页”
             wait.until(ec.element_to_be_clickable((By.CSS_SELECTOR, 'div.pagination a[title="下一页"]'))).click()
         # 点击删除处方
-        # wait.until(
-        #     ec.element_to_be_clickable((By.CSS_SELECTOR, '#outpatientTable tr:nth-child(2) a[title="删除"]'))).click()
+        wait.until(
+            ec.element_to_be_clickable((By.CSS_SELECTOR, '#outpatientTable tr:nth-child(2) a[title="删除"]'))).click()
 
         # 点击删除DDD
-        wait.until(
-            ec.element_to_be_clickable((By.CSS_SELECTOR, '#prevMedicalTable tr:nth-child(2) a[title="删除"]'))).click()
+        # wait.until(
+        #     ec.element_to_be_clickable((By.CSS_SELECTOR, '#prevMedicalTable tr:nth-child(2) a[title="删除"]'))).click()
 
         # 点击确定删除
         wait.until(ec.alert_is_present())
