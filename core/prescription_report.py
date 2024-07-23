@@ -120,6 +120,8 @@ class PrescriptionReport:
         self.web_driver.find_element(By.ID, 'outAmount').clear()  # 清除输入框数据
         self.web_driver.find_element(By.ID, 'outAmount').send_keys(round(money, 2))
         if money > 10000:
+            # 鼠标左键单击别处才会弹出提示框
+            self.web_driver.find_element(By.ID, 'outDrugs').click()
             self.wait.until(ec.alert_is_present())
             self.web_driver.switch_to.alert.accept()
 
