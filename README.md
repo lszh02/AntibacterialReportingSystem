@@ -14,7 +14,7 @@
 - 用于登录“全国抗菌药物临床应用监测网”的账号和密码
 
 ## 运行方法
-1. 确保已安装所有必要的Python库，包括selenium、pandas等。
+1. 确保已安装所有必要的Python库，包括selenium、PyQt5等。
 2. 配置Chrome浏览器，并下载对应版本的ChromeDriver。
 3. 将ChromeDriver的路径添加到系统的环境变量中。
 4. 准备好从医院信息系统（HIS）导出的处方数据文件，包括基础信息和药品信息。
