@@ -14,7 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
-from config import login_info_path
+from config import login_info_path, source_file_path, app_logger, error_logger
 from core.ddd_report import DDDData, DDDReport
 from core.prescription_report import PrescriptionReport, JzPrescriptionReport
 from db.database import read_excel, Prescription
@@ -37,8 +37,9 @@ class PrescriptionUpdateDep(Prescription, QWidget):
             dep_chinese_name = self._prescription_data_sheet.cell(row_num, 1).value
             if dep_chinese_name not in department_dict:
                 # 第三个参数表示显示类型，可选，有正常（QLineEdit.Normal）、密碼（ QLineEdit. Password）、不显示（ QLineEdit. NoEcho）三种情况
-                dep_pic_name, ok = QInputDialog.getText(self, "科室字典需更新", f'{dep_chinese_name} 未关联对应字典，请输入:',
-                                                        QLineEdit.Normal, "dep_name")
+                dep_pic_name, ok = QInputDialog.getText(self, "科室字典需更新",
+                                                        f'处方科室：{dep_chinese_name} 未关联:',
+                                                        QLineEdit.Normal, "请输入网页上对应的科室名称")
                 department_dict[dep_chinese_name] = dep_pic_name  # 增加一条，更新字典
 
             row_x = 1
@@ -81,10 +82,12 @@ class PrescriptionReportThread(QThread):
             self.prescription_sig.emit(one_prescription)  # 发送信号：一条处方信息
             if self.data_type == 1:
                 # 按门诊处方上报
-                report = PrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
+                report = PrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver,
+                                            self.wait)
             elif self.data_type == 2:
                 # 按急诊处方上报
-                report = JzPrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver, self.wait)
+                report = JzPrescriptionReport(one_prescription, dep_dict, antibacterial_drugs_dict, self.web_driver,
+                                              self.wait)
 
             self.prescription_progress_sig.emit(
                 '—' * 4 + f"开始填报第{self.record_completed + 1}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
@@ -101,7 +104,8 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
-            self.prescription_progress_sig.emit('—' * 4 + f"已填报{self.record_completed}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
+            self.prescription_progress_sig.emit(
+                '—' * 4 + f"已填报{self.record_completed}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
             self.prescription_progress_sig.emit('')  # 空一行
         self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
         self.prescription_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
@@ -127,8 +131,10 @@ class DDDReportByUI(DDDReport, QObject):
     def do_report(self):
         # 遍历剩余信息
         for one_info in self.ddd_data[self.start_record:]:
+            app_logger.info(f"开始填报: {one_info.get('drug_name')}")
             self.ddd_drug_sig.emit(one_info)  # 发送信号：一条数据信息
-            self.ddd_progress_sig.emit(f"—————开始填报第{self.start_record + 1}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
+            self.ddd_progress_sig.emit(
+                f"—————开始填报第{self.start_record + 1}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit(self.input_drug_name(one_info))  # 发送信号：输入药品名称
             self.ddd_progress_sig.emit(self.input_drug_count(one_info))  # 发送信号：输入药品数量
             self.ddd_progress_sig.emit(self.input_drug_money(one_info))  # 发送信号：输入药品金额
@@ -217,7 +223,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.drug_sheet.setEnabled(True)
 
     def file_choose(self):
-        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", r"D:\张思龙\1.药事\3.抗菌药物监测\2024年", "全部文件(*.*)")
+        filename, filetype = QFileDialog.getOpenFileName(self, "打开文件", source_file_path, "全部文件(*.*)")
         if filename != "":
             self.file_path_text.setText(filename)
 
@@ -343,7 +349,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def update_ddd_drug_name(self, drug_name):
         # 获取输入内容，更新字典。
-        ddd_drug_name, ok = QInputDialog.getText(self, "药品名称字典需更新", f'请输入{drug_name} 在上报系统中的名字:', QLineEdit.Normal, "")
+        ddd_drug_name, ok = QInputDialog.getText(self, "药品名称字典需更新", f'请输入{drug_name} 在上报系统中的名字:',
+                                                 QLineEdit.Normal, "")
         if ok and ddd_drug_name:
             self.ddd_reporter.ddd_drug_name = ddd_drug_name
             self.ddd_reporter.isPause = False
@@ -351,7 +358,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # TODO 如果输入为空或者点击取消按钮，则不更新字典。
             # 后两项分别为按钮(以|隔开，共有7种按钮类型，见示例后)、默认按钮(省略则默认为第一个按钮)
             # 选择Yes代码中replay为16384, 选择No则replay为65536
-            reply = QMessageBox.question(self, "异常输入", "网络系统中无对应的品种吗？", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            reply = QMessageBox.question(self, "异常输入", "网络系统中无对应的品种吗？",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
             if reply == 16384:
                 self.input_error_sig.emit()
                 pass
@@ -382,7 +390,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 取得当前选中行的index，不选默认为-1
         current_row = self.tableView.currentIndex().row()
         if current_row == -1:
-            QMessageBox.warning(self, "请选择", "未选择开始条目，请点击药品条目后重试！", QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.warning(self, "请选择", "未选择开始条目，请点击药品条目后重试！",
+                                QMessageBox.Yes | QMessageBox.No,
                                 QMessageBox.Yes)
         else:
             self.ddd_reporter.start_record = current_row  # 将当前选中行的index设置为上报线程中的起始数
@@ -448,7 +457,8 @@ class LoginWindow(QMainWindow, Ui_LoginWindow):
         else:
             self.login_button.setEnabled(True)
             self.login_button.setText("登录")
-            reply = QMessageBox.warning(self, "登陆失败", "登陆失败，可能是网络延迟，是否重试？", QMessageBox.Yes | QMessageBox.No,
+            reply = QMessageBox.warning(self, "登陆失败", "登陆失败，可能是网络延迟，是否重试？",
+                                        QMessageBox.Yes | QMessageBox.No,
                                         QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.login()
