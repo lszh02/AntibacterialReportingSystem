@@ -22,3 +22,5 @@ typing_extensions==4.12.1
 urllib3==2.2.1
 wsproto==1.2.0
 xlrd==2.0.1
+
+loguru~=0.7.3

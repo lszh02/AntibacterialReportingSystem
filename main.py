@@ -78,6 +78,7 @@ class PrescriptionReportThread(QThread):
         antibacterial_drugs_dict = DDDReport.get_antibacterial_drugs_dict()
 
         # 遍历剩余处方信息
+        app_logger.info('开始遍历剩余处方信息')
         for one_prescription in self.data[self.record_completed:]:
             self.prescription_sig.emit(one_prescription)  # 发送信号：一条处方信息
             if self.data_type == 1:
@@ -107,6 +108,8 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(
                 '—' * 4 + f"已填报{self.record_completed}/{len(self.data)}条记录！" + '—' * 4)  # 发送信号：进度信息
             self.prescription_progress_sig.emit('')  # 空一行
+            app_logger.info(f"已填报{self.record_completed}/{len(self.data)}条记录！")
+        app_logger.info(f'填报完毕！ 共计{self.record_completed}条！')
         self.prescription_progress_sig.emit(f'填报完毕！  共计{self.record_completed}条！')
         self.prescription_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
         time.sleep(10)
@@ -145,6 +148,8 @@ class DDDReportByUI(DDDReport, QObject):
             self.ddd_progress_sig.emit(f"—————已填报{self.start_record}/{len(self.ddd_data)}条记录！—————")  # 发送信号：进度信息
             self.ddd_progress_sig.emit('')  # 空一行
         self.ddd_progress_sig.emit(f'填报完毕！  共计{self.start_record}条！')
+        self.ddd_progress_sig.emit('完成上报任务，10秒后将返回主界面！')
+        time.sleep(10)
         self.finished_sig.emit()
 
     def input_drug_name(self, one_drug_info):
