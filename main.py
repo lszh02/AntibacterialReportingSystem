@@ -490,7 +490,7 @@ class LoginThread(QThread):
         web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
         web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-        web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+        web_driver.find_element(By.CSS_SELECTOR, "a.login-btn").click()  # 单击登录
         # 能定位到“退出”按钮即表示登录成功
         self.driver_wait.until(ec.presence_of_element_located((By.CSS_SELECTOR, 'a[title="退出"]')))
         self.login_signal.emit(True)
