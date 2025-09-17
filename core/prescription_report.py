@@ -360,11 +360,26 @@ class PrescriptionReport:
         pass
 
     def save_data(self):
-        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]').click()  # 单击保存
-        self.wait.until(ec.alert_is_present())
-        self.web_driver.switch_to.alert.accept()
-        print("保存数据")
-        return "保存数据"
+        try:
+            # 使用显式等待确保元素存在
+            save_button = self.wait.until(
+                ec.element_to_be_clickable((By.CSS_SELECTOR, 'input[value="保存门诊处方用药情况调查表"]'))
+            )
+            save_button.click()
+            self.wait.until(ec.alert_is_present())
+            self.web_driver.switch_to.alert.accept()
+            print("保存数据")
+            return "保存数据"
+        except Exception as e:
+            print(f"保存数据时出错：{e}")
+            # 可以尝试其他定位方式或手动处理
+            print("请手动保存后右键继续...")
+            while True:
+                time.sleep(0.001)
+                if win32api.GetKeyState(0x02) < 0:
+                    break
+            return "手动保存数据"
+
 
     def goto_main_ui(self):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回门诊处方用药情况调查表"]').click()
@@ -375,11 +390,24 @@ class JzPrescriptionReport(PrescriptionReport):
         self.web_driver.find_element(By.CSS_SELECTOR, 'input[value = "返回急诊处方用药情况调查表"]').click()
 
     def save_data(self):
-        self.web_driver.find_element(By.CSS_SELECTOR, 'input[value="保存急诊处方用药情况调查表"]').click()  # 单击保存
-        self.wait.until(ec.alert_is_present())
-        self.web_driver.switch_to.alert.accept()
-        print("保存数据")
-        return "保存数据"
+        try:
+            save_button = self.wait.until(
+                ec.element_to_be_clickable((By.CSS_SELECTOR, 'input[value="保存急诊处方用药情况调查表"]'))
+            )
+            save_button.click()
+            self.wait.until(ec.alert_is_present())
+            self.web_driver.switch_to.alert.accept()
+            print("保存数据")
+            return "保存数据"
+        except Exception as e:
+            print(f"保存数据时出错：{e}")
+            print("请手动保存后右键继续...")
+            while True:
+                time.sleep(0.001)
+                if win32api.GetKeyState(0x02) < 0:
+                    break
+            return "手动保存数据"
+
 
     def determine_the_level_of_antimicrobial_restriction(self, drug_name):
         # 制作抗菌药物的限制级和特殊级的字典

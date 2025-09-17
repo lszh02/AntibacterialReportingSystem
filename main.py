@@ -100,8 +100,6 @@ class PrescriptionReportThread(QThread):
             self.prescription_progress_sig.emit(report.injection_or_not())  # 发送信号：判断是否注射剂
             self.prescription_progress_sig.emit(report.input_diagnosis())  # 发送信号：输入诊断
             self.prescription_progress_sig.emit(report.save_data())  # 发送信号：保存数据
-            # fixme 此处点击保存后，页面可能还没刷新就开始填报下一条记录，导致填报诊断时报错
-            time.sleep(1)
             self.prescription_progress_sig.emit(report.antibacterial_or_not())  # 发送信号：判断是否有抗菌药物
 
             self.record_completed += 1
