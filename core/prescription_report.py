@@ -2,6 +2,7 @@ import os.path
 
 import time
 import win32api
+import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.select import Select
@@ -152,11 +153,26 @@ class PrescriptionReport:
             print('该处方中无注射剂')
             return '该处方中无注射剂'
 
+    # --------------- 括号清洗 -----------------
+    BRACKET_RE = re.compile(r'\([^)]*\)')        # 匹配任意括号及内部文本
+    CAN_KEEP   = {'低危', '中危', '高危', '极高危', '组织学＋'}  # 白名单，按需追加
+
+    @classmethod
+    def clean_brackets(cls, raw: str) -> str:
+        """去掉括号及内部；白名单内的括号内容保留"""
+        def repl(m):
+            txt = m.group(0)          # 例如 "(术后)"
+            return txt if any(k in txt for k in cls.CAN_KEEP) else ''
+        return cls.BRACKET_RE.sub(repl, raw).strip()
+
     def input_diagnosis(self):
         diagnosis_list = self.prescription_info.get("diagnosis")
         # 诊断可以输入1-5个
         for i in range(min(len(diagnosis_list), 5)):
             diagnosis = diagnosis_list[i]
+
+            # ====== 括号清洗 ======
+            diagnosis = self.clean_brackets(diagnosis)
 
             # 去掉诊断中的前后缀（修饰词）
             for _ in self.modifying_words:
