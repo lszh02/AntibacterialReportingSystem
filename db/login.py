@@ -27,7 +27,7 @@ def login(web_driver=None, url="http://y.chinadtc.org.cn/login", account=None, p
     web_driver.find_element(By.CSS_SELECTOR, "#account").send_keys(account)  # 输入账号
     web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").clear()  # 清除输入框数据
     web_driver.find_element(By.CSS_SELECTOR, "#accountPwd").send_keys(pwd)  # 输入密码
-    web_driver.find_element(By.CSS_SELECTOR, "#loginBtn").click()  # 单击登录
+    web_driver.find_element(By.CSS_SELECTOR, "a.login-btn").click()  # 单击登录
     print('请手动选择时间和上报模块！完成后单击右键继续……')
     while True:
         time.sleep(0.001)
