@@ -3,8 +3,9 @@ import loguru
 
 base_dir = Path(__file__).resolve().parent
 
-# 设置登录信息文件路径
-login_info_path = base_dir / Path(r'db\login_info.txt')
+# 设置文件路径
+login_info_path = base_dir / Path(r'db\login_info.txt')     # 登录信息
+source_file_path = r'F:\同步文件\1.药事\3.抗菌药物监测\2026年'   # 报表文件
 
 # 设置日志文件路径
 app_log_path = base_dir / Path(r'log/app.log')
@@ -24,7 +25,6 @@ error_logger.add(error_log_path, format="{time} | {level} | {message}",
                  filter=lambda record: record["level"].name == "ERROR" or record["level"].name == "CRITICAL",
                  rotation="1 day", retention="60 days")
 
-source_file_path = r'D:\网盘同步\1.药事\3.抗菌药物监测\2025年'
 freq_web_list = ['即刻', '1/日', '2/日', '3/日', '4/日', 'q2h', 'q6h', 'q8h', 'q12h', '每晚', '其他']
 way_web_list = ['静脉滴注', '静脉泵入', '静脉推注', '肌肉注射', '静脉注射', '皮下注射', '球后注射',
                 '结膜下注射', '眼内注射', '直肠给药', '雾化吸入', '肠道准备',
