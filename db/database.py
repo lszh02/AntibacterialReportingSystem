@@ -185,7 +185,8 @@ class Prescription:
                 row_x = 1
                 while row_num + row_x < self._drug_data_sheet.nrows:
                     # 一张处方多个药品时，列表追加其他药品信息
-                    if self._drug_data_sheet.cell_type(row_num + row_x, 0) == 0:
+                    next_prescription_id = self._drug_data_sheet.cell(row_num + row_x, 0).value
+                    if next_prescription_id == prescription_id:
                         drug_info_dict['drug_name'] = self._drug_data_sheet.cell(row_num + row_x, 1).value  # 取第2列：药名
                         drug_info_dict['specifications'] = self._drug_data_sheet.cell(row_num + row_x,
                                                                                       2).value  # 取第3列：规格
